@@ -8,12 +8,15 @@ import { useEffect, useRef, useState } from 'react'
 import { SPRITE_SHEET_URL } from './atlas.ts'
 import { drawScene } from './draw.ts'
 import type { SceneTiers } from './draw.ts'
-import type { FlareTier, KpTier } from '../data/thresholds.ts'
+import { createWindField, drawWindField, stepWindField } from './wind.ts'
+import type { WindField } from './wind.ts'
+import type { FlareTier, KpTier, WindTier } from '../data/thresholds.ts'
 
 const KP_TIERS: KpTier[] = ['calm', 'unsettled', 'storm', 'severe']
 const FLARE_TIERS: FlareTier[] = ['quiet', 'small', 'strong', 'extreme']
+const WIND_TIERS: WindTier[] = ['slow', 'moderate', 'fast']
 
-const DEFAULT_TIERS: SceneTiers = { kp: 'calm', flare: 'quiet' }
+const DEFAULT_TIERS: SceneTiers = { kp: 'calm', flare: 'quiet', wind: 'slow' }
 
 export interface SceneProps {
   tiers?: SceneTiers
@@ -43,22 +46,47 @@ export function Scene({ tiers }: SceneProps) {
     if (!ctx) return
     const sheet = sheetRef.current
 
-    function render() {
-      if (!ctx || !canvas) return
+    let width = 0
+    let height = 0
+    let windField: WindField | null = null
+
+    function resize() {
+      if (!canvas) return
       const dpr = window.devicePixelRatio || 1
-      const width = canvas.clientWidth
-      const height = canvas.clientHeight
+      width = canvas.clientWidth
+      height = canvas.clientHeight
       canvas.width = Math.round(width * dpr)
       canvas.height = Math.round(height * dpr)
-      ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
-      drawScene(ctx, sheet, width, height, activeTiers)
+      ctx!.setTransform(dpr, 0, 0, dpr, 0, 0)
+      windField = createWindField(activeTiers.wind, width, height)
     }
 
-    render()
+    resize()
 
-    const observer = new ResizeObserver(render)
+    const startTime = performance.now()
+    let lastTime = startTime
+    let rafId = requestAnimationFrame(frame)
+
+    function frame(time: number) {
+      const dtSeconds = (time - lastTime) / 1000
+      lastTime = time
+
+      if (windField) {
+        stepWindField(windField, dtSeconds, width, height)
+        drawScene(ctx!, sheet, width, height, activeTiers, time - startTime)
+        drawWindField(ctx!, windField)
+      }
+
+      rafId = requestAnimationFrame(frame)
+    }
+
+    const observer = new ResizeObserver(resize)
     observer.observe(canvas)
-    return () => observer.disconnect()
+
+    return () => {
+      cancelAnimationFrame(rafId)
+      observer.disconnect()
+    }
   }, [sheetLoaded, activeTiers])
 
   return (
@@ -110,6 +138,22 @@ function SceneDevControls({
           }
         >
           {FLARE_TIERS.map((tier) => (
+            <option key={tier} value={tier}>
+              {tier}
+            </option>
+          ))}
+        </select>
+      </label>
+      <label className="flex items-center gap-1">
+        wind:
+        <select
+          className="border border-slate-700 bg-slate-900 px-1 py-0.5 text-slate-200"
+          value={tiers.wind}
+          onChange={(e) =>
+            onChange({ ...tiers, wind: e.target.value as WindTier })
+          }
+        >
+          {WIND_TIERS.map((tier) => (
             <option key={tier} value={tier}>
               {tier}
             </option>

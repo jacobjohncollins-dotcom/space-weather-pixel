@@ -4,11 +4,12 @@
 
 import { getFrame } from './atlas.ts'
 import type { FrameName } from './atlas.ts'
-import type { FlareTier, KpTier } from '../data/thresholds.ts'
+import type { FlareTier, KpTier, WindTier } from '../data/thresholds.ts'
 
 export interface SceneTiers {
   kp: KpTier
   flare: FlareTier
+  wind: WindTier
 }
 
 export function skyFrame(kp: KpTier): FrameName {
@@ -155,22 +156,42 @@ function tileFrame(
   ctx.restore()
 }
 
+// Scales a rect around its own center — used for the sun's idle "breathing"
+// pulse so it grows/shrinks in place rather than drifting.
+function pulseRect(rect: Rect, scale: number): Rect {
+  const cx = rect.x + rect.w / 2
+  const cy = rect.y + rect.h / 2
+  const w = rect.w * scale
+  const h = rect.h * scale
+  return { x: cx - w / 2, y: cy - h / 2, w, h }
+}
+
+// `elapsedMs` drives the idle breathing/twinkle animation (Chunk 7): a slow
+// sinusoidal pulse on the sun's scale and the aurora's opacity. Passing 0
+// (the default) reproduces the static Chunk 6 render.
 export function drawScene(
   ctx: CanvasRenderingContext2D,
   sheet: CanvasImageSource,
   width: number,
   height: number,
   tiers: SceneTiers,
+  elapsedMs = 0,
 ): void {
   ctx.imageSmoothingEnabled = false
   ctx.clearRect(0, 0, width, height)
 
   const layout = computeLayout(width, height)
   tileFrame(ctx, sheet, skyFrame(tiers.kp), layout.sky, layout.skyTile)
-  drawFrame(ctx, sheet, sunFrame(tiers.flare), layout.sun)
+
+  const sunPulse = 1 + 0.025 * Math.sin(elapsedMs / 900)
+  drawFrame(ctx, sheet, sunFrame(tiers.flare), pulseRect(layout.sun, sunPulse))
   drawFrame(ctx, sheet, 'earth', layout.earth)
 
   const aurora = auroraFrame(tiers.kp)
-  if (aurora)
+  if (aurora) {
+    ctx.save()
+    ctx.globalAlpha = 0.75 + 0.25 * Math.sin(elapsedMs / 620)
     tileFrame(ctx, sheet, aurora, layout.aurora, layout.auroraTile)
+    ctx.restore()
+  }
 }
