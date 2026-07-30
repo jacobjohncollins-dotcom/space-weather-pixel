@@ -1,0 +1,16 @@
+[
+  {
+    "time_tag": "2024-05-10T00:00:00Z",
+    "satellite": 16,
+    "flux": 1.23e-7,
+    "observed_flag": true,
+    "energy": "0.1-0.8nm"
+  },
+  {
+    "time_tag": "2024-05-10T00:01:00Z",
+    "satellite": 16,
+    "flux": 4.5e-6,
+    "observed_flag": true,
+    "energy": "0.1-0.8nm"
+  }
+]
