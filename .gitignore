@@ -12,6 +12,10 @@ dist
 dist-ssr
 *.local
 
+# NOAA data snapshot fetched at build time by
+# scripts/fetch-noaa-snapshot.mjs — not source, regenerated on every deploy.
+public/data/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

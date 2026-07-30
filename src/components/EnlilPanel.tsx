@@ -5,7 +5,6 @@
 // panel, per the resolved art-direction note in Plan.md §5/§10.
 
 import { DISH_RECT_FRACTIONS } from '../scene/draw.ts'
-import { NOAA_BASE_URL } from '../data/noaa.ts'
 import { useSpaceWeather } from '../data/useSpaceWeather.ts'
 
 // Real NOAA ENLIL frames are ~1.6:1 (960x600). The panel is taller than
@@ -43,7 +42,7 @@ export function EnlilPanel() {
           </div>
         ) : data ? (
           <img
-            src={`${NOAA_BASE_URL}${data.imageUrl}`}
+            src={`${import.meta.env.BASE_URL.replace(/\/$/, '')}${data.imageUrl}?t=${encodeURIComponent(data.time)}`}
             alt="Latest WSA-Enlil solar wind model frame"
             className="h-full w-full object-contain"
             style={{ imageRendering: 'pixelated' }}

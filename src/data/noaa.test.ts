@@ -1,6 +1,5 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest'
 import {
-  NOAA_BASE_URL,
   parsePlanetaryKIndex,
   parseSolarWindPlasma,
   parseSolarWindMag,
@@ -153,23 +152,22 @@ describe('parse functions', () => {
 
 describe('fetch wrappers', () => {
   const fixtures: Record<string, unknown> = {
-    '/products/noaa-planetary-k-index.json': kIndexFixture,
-    '/json/rtsw/rtsw_wind_1m.json': plasmaFixture,
-    '/json/rtsw/rtsw_mag_1m.json': magFixture,
-    '/json/goes/primary/xrays-6-hour.json': xrayFluxFixture,
-    '/json/goes/primary/xray-flares-latest.json': xrayFlaresFixture,
-    '/json/solar_regions.json': solarRegionsFixture,
-    '/json/ovation_aurora_latest.json': ovationFixture,
-    '/products/alerts.json': alertsFixture,
-    '/products/animations/enlil.json': enlilFixture,
+    '/data/planetary-k-index.json': kIndexFixture,
+    '/data/solar-wind-plasma.json': plasmaFixture,
+    '/data/solar-wind-mag.json': magFixture,
+    '/data/xray-flux.json': xrayFluxFixture,
+    '/data/xray-flares.json': xrayFlaresFixture,
+    '/data/solar-regions.json': solarRegionsFixture,
+    '/data/ovation-aurora.json': ovationFixture,
+    '/data/alerts.json': alertsFixture,
+    '/data/enlil-animation.json': enlilFixture,
   }
 
   beforeEach(() => {
     vi.stubGlobal(
       'fetch',
       vi.fn(async (input: string | URL) => {
-        const url = input.toString()
-        const path = url.replace(NOAA_BASE_URL, '')
+        const path = input.toString()
         const body = fixtures[path]
         if (body === undefined) {
           return new Response(null, { status: 404 })

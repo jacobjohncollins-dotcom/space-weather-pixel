@@ -1,8 +1,16 @@
-name: Deploy to GitHub Pages
+name: Refresh NOAA data snapshot
+
+# NOAA's services.swpc.noaa.gov started returning an AWS WAF JS challenge to
+# cross-origin browser fetch() calls instead of real feed data, which broke
+# every live reading on the deployed site (see scripts/fetch-noaa-snapshot.mjs
+# for the full explanation). This workflow re-fetches each feed server-side
+# on a schedule and rebuilds+redeploys the site with a fresh same-origin
+# snapshot baked in, since a plain server-side request isn't challenged the
+# same way.
 
 on:
-  push:
-    branches: [main]
+  schedule:
+    - cron: '*/15 * * * *'
   workflow_dispatch:
 
 permissions:

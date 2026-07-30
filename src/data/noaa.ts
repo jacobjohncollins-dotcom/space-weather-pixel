@@ -8,6 +8,16 @@
 // Each `parse*` function converts the raw wire shape into the typed records
 // in ./types.ts and is exported separately so it can be unit tested against
 // fixture JSON without a network call.
+//
+// The browser no longer fetches NOAA directly: `services.swpc.noaa.gov`
+// started returning an AWS WAF JS challenge (HTTP 202, empty body) to
+// cross-origin fetch() calls rather than the real feed, which a page load
+// under a different origin can't solve. Instead, a scheduled GitHub Action
+// (scripts/fetch-noaa-snapshot.mjs, server-side, unaffected by the browser
+// CORS/WAF interaction) fetches each feed and republishes it as a
+// same-origin static file under `public/data/`, rebuilt every ~15 minutes.
+// `feed-manifest.json`'s `remote` paths are what that script fetches from
+// NOAA_BASE_URL; `local` is what the browser fetches from here instead.
 
 import type {
   KIndexReading,
@@ -20,29 +30,21 @@ import type {
   SpaceWeatherAlert,
   EnlilFrame,
 } from './types.ts'
+import feedManifest from './feed-manifest.json'
 
 export const NOAA_BASE_URL = 'https://services.swpc.noaa.gov'
 
-// solarWindPlasma/solarWindMag originally pointed at
-// products/solar-wind/plasma-7-day.json and mag-7-day.json per Plan.md §3 —
-// those don't exist on the live server (404). The working real-time
-// equivalents are the combined DSCOVR/ACE "rtsw" feeds below.
-const FEED_PATHS = {
-  planetaryKIndex: '/products/noaa-planetary-k-index.json',
-  solarWindPlasma: '/json/rtsw/rtsw_wind_1m.json',
-  solarWindMag: '/json/rtsw/rtsw_mag_1m.json',
-  xrayFlux: '/json/goes/primary/xrays-6-hour.json',
-  xrayFlares: '/json/goes/primary/xray-flares-latest.json',
-  solarRegions: '/json/solar_regions.json',
-  ovationAurora: '/json/ovation_aurora_latest.json',
-  alerts: '/products/alerts.json',
-  enlilAnimation: '/products/animations/enlil.json',
-} as const
+// Root-absolute static assets (like this data snapshot, or the sprite sheet
+// in scene/atlas.ts) have to be joined with BASE_URL by hand under the
+// GitHub Pages subpath build — Vite's base-rewriting only touches imports
+// and bundled asset references, not runtime-constructed URLs.
+const DATA_BASE_URL = `${import.meta.env.BASE_URL.replace(/\/$/, '')}/data`
 
-async function fetchJson(path: string): Promise<unknown> {
-  const response = await fetch(`${NOAA_BASE_URL}${path}`)
+async function fetchJson(key: keyof typeof feedManifest): Promise<unknown> {
+  const local = feedManifest[key].local
+  const response = await fetch(`${DATA_BASE_URL}/${local}`)
   if (!response.ok) {
-    throw new Error(`NOAA feed ${path} responded with ${response.status}`)
+    throw new Error(`data snapshot ${local} responded with ${response.status}`)
   }
   return response.json()
 }
@@ -209,39 +211,39 @@ export function parseEnlilAnimation(raw: unknown): EnlilFrame[] {
 }
 
 export async function fetchPlanetaryKIndex(): Promise<KIndexReading[]> {
-  return parsePlanetaryKIndex(await fetchJson(FEED_PATHS.planetaryKIndex))
+  return parsePlanetaryKIndex(await fetchJson('planetaryKIndex'))
 }
 
 export async function fetchSolarWindPlasma(): Promise<
   SolarWindPlasmaReading[]
 > {
-  return parseSolarWindPlasma(await fetchJson(FEED_PATHS.solarWindPlasma))
+  return parseSolarWindPlasma(await fetchJson('solarWindPlasma'))
 }
 
 export async function fetchSolarWindMag(): Promise<SolarWindMagReading[]> {
-  return parseSolarWindMag(await fetchJson(FEED_PATHS.solarWindMag))
+  return parseSolarWindMag(await fetchJson('solarWindMag'))
 }
 
 export async function fetchXrayFlux(): Promise<XrayFluxReading[]> {
-  return parseXrayFlux(await fetchJson(FEED_PATHS.xrayFlux))
+  return parseXrayFlux(await fetchJson('xrayFlux'))
 }
 
 export async function fetchXrayFlares(): Promise<XrayFlareEvent[]> {
-  return parseXrayFlares(await fetchJson(FEED_PATHS.xrayFlares))
+  return parseXrayFlares(await fetchJson('xrayFlares'))
 }
 
 export async function fetchSolarRegions(): Promise<SolarRegion[]> {
-  return parseSolarRegions(await fetchJson(FEED_PATHS.solarRegions))
+  return parseSolarRegions(await fetchJson('solarRegions'))
 }
 
 export async function fetchOvationAurora(): Promise<OvationAurora> {
-  return parseOvationAurora(await fetchJson(FEED_PATHS.ovationAurora))
+  return parseOvationAurora(await fetchJson('ovationAurora'))
 }
 
 export async function fetchAlerts(): Promise<SpaceWeatherAlert[]> {
-  return parseAlerts(await fetchJson(FEED_PATHS.alerts))
+  return parseAlerts(await fetchJson('alerts'))
 }
 
 export async function fetchEnlilAnimation(): Promise<EnlilFrame[]> {
-  return parseEnlilAnimation(await fetchJson(FEED_PATHS.enlilAnimation))
+  return parseEnlilAnimation(await fetchJson('enlilAnimation'))
 }

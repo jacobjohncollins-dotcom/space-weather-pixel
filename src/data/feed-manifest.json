@@ -1,0 +1,38 @@
+{
+  "planetaryKIndex": {
+    "remote": "/products/noaa-planetary-k-index.json",
+    "local": "planetary-k-index.json"
+  },
+  "solarWindPlasma": {
+    "remote": "/json/rtsw/rtsw_wind_1m.json",
+    "local": "solar-wind-plasma.json"
+  },
+  "solarWindMag": {
+    "remote": "/json/rtsw/rtsw_mag_1m.json",
+    "local": "solar-wind-mag.json"
+  },
+  "xrayFlux": {
+    "remote": "/json/goes/primary/xrays-6-hour.json",
+    "local": "xray-flux.json"
+  },
+  "xrayFlares": {
+    "remote": "/json/goes/primary/xray-flares-latest.json",
+    "local": "xray-flares.json"
+  },
+  "solarRegions": {
+    "remote": "/json/solar_regions.json",
+    "local": "solar-regions.json"
+  },
+  "ovationAurora": {
+    "remote": "/json/ovation_aurora_latest.json",
+    "local": "ovation-aurora.json"
+  },
+  "alerts": {
+    "remote": "/products/alerts.json",
+    "local": "alerts.json"
+  },
+  "enlilAnimation": {
+    "remote": "/products/animations/enlil.json",
+    "local": "enlil-animation.json"
+  }
+}
