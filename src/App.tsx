@@ -1,3 +1,4 @@
+import { AlertBanner } from './components/AlertBanner.tsx'
 import { Hud } from './components/Hud.tsx'
 import { Scene } from './scene/Scene.tsx'
 import { useSpaceWeather } from './data/useSpaceWeather.ts'
@@ -62,6 +63,8 @@ function App() {
           {statusLabel}
         </p>
       </header>
+
+      <AlertBanner alerts={state.alerts.data} />
 
       <div className="flex w-full max-w-5xl flex-col items-center gap-4 lg:flex-row lg:items-start lg:justify-center">
         <Scene tiers={tiers} />

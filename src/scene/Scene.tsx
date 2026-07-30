@@ -15,6 +15,32 @@ import type { WindField } from './wind.ts'
 import type { BzTier, FlareTier, KpTier, WindTier } from '../data/thresholds.ts'
 import { EnlilPanel } from '../components/EnlilPanel.tsx'
 import { SourcesPanel } from '../components/SourcesPanel.tsx'
+import { usePrefersReducedMotion } from '../hooks/usePrefersReducedMotion.ts'
+
+const KP_LABELS: Record<KpTier, string> = {
+  calm: 'calm',
+  unsettled: 'unsettled aurora activity',
+  storm: 'storm-level aurora activity',
+  severe: 'severe aurora activity',
+}
+const FLARE_LABELS: Record<FlareTier, string> = {
+  quiet: 'quiet sun',
+  small: 'minor flare activity',
+  strong: 'a strong flare',
+  extreme: 'an extreme flare',
+}
+const BZ_LABELS: Record<BzTier, string> = {
+  shielded: 'a shielded magnetosphere',
+  ripple: 'a rippling magnetosphere',
+  crack: 'a cracked magnetosphere',
+}
+
+// Text alternative for the canvas (Chunk 11, Plan.md §9a) — the scene is
+// otherwise a purely decorative-looking canvas with no DOM text of its own,
+// so screen reader users need a sentence describing what it currently shows.
+function sceneAriaLabel(tiers: SceneTiers): string {
+  return `Pixel-art space weather scene: ${KP_LABELS[tiers.kp]}, ${FLARE_LABELS[tiers.flare]}, ${BZ_LABELS[tiers.bz]}.`
+}
 
 const KP_TIERS: KpTier[] = ['calm', 'unsettled', 'storm', 'severe']
 const FLARE_TIERS: FlareTier[] = ['quiet', 'small', 'strong', 'extreme']
@@ -33,6 +59,7 @@ export function Scene({ tiers }: SceneProps) {
   const [sheetLoaded, setSheetLoaded] = useState(false)
   const [devTiers, setDevTiers] = useState<SceneTiers>(DEFAULT_TIERS)
   const activeTiers = tiers ?? devTiers
+  const prefersReducedMotion = usePrefersReducedMotion()
   // Persists across re-runs of the effect below (unlike a plain variable),
   // so a tier change can still be diffed against what was showing a moment
   // ago even though that effect fully remounts on every `activeTiers` change.
@@ -57,6 +84,30 @@ export function Scene({ tiers }: SceneProps) {
 
     let width = 0
     let height = 0
+
+    // `prefers-reduced-motion` (Chunk 11): freeze the idle wind/pulse/twinkle
+    // animation and the crossfade transition entirely, but still let a tier
+    // change swap which sprite is shown — draw a single static hard-cut
+    // frame per tier change instead of running the rAF loop below.
+    if (prefersReducedMotion) {
+      function resizeStatic() {
+        if (!canvas) return
+        const dpr = window.devicePixelRatio || 1
+        width = canvas.clientWidth
+        height = canvas.clientHeight
+        canvas.width = Math.round(width * dpr)
+        canvas.height = Math.round(height * dpr)
+        ctx!.setTransform(dpr, 0, 0, dpr, 0, 0)
+        drawScene(ctx!, sheet, width, height, activeTiers)
+      }
+
+      resizeStatic()
+      const staticObserver = new ResizeObserver(resizeStatic)
+      staticObserver.observe(canvas)
+      prevTiersRef.current = activeTiers
+      return () => staticObserver.disconnect()
+    }
+
     let windField: WindField | null = null
 
     // Arm crossfade/pop timers against whatever was showing before this
@@ -105,13 +156,15 @@ export function Scene({ tiers }: SceneProps) {
       cancelAnimationFrame(rafId)
       observer.disconnect()
     }
-  }, [sheetLoaded, activeTiers])
+  }, [sheetLoaded, activeTiers, prefersReducedMotion])
 
   return (
     <div className="flex w-full max-w-2xl flex-col items-center gap-2">
       <div className="relative aspect-[16/10] w-full">
         <canvas
           ref={canvasRef}
+          role="img"
+          aria-label={sceneAriaLabel(activeTiers)}
           className="h-full w-full border-2 border-slate-700 bg-slate-950"
           style={{ imageRendering: 'pixelated' }}
         />

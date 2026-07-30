@@ -29,6 +29,36 @@ function tierLabel(tier: string): string {
   return TIER_LABELS[tier] ?? tier
 }
 
+// The pixel-art Scene canvas carries the primary visual, so it has no DOM
+// text of its own (Chunk 11, Plan.md §9a) — this sentence mirrors the same
+// numbers in a visually-hidden `aria-live` region so screen reader users are
+// notified whenever a poll changes them, not just sighted users watching the
+// visible Hud panel below.
+function srSummary(state: SpaceWeatherState): string {
+  const parts: string[] = []
+  if (state.kp.data) {
+    parts.push(
+      `Kp index ${state.kp.data.value.toFixed(2)}, ${tierLabel(state.kp.data.tier)}`,
+    )
+  }
+  if (state.wind.data) {
+    parts.push(
+      `Solar wind ${Math.round(state.wind.data.speedKmS)} kilometers per second, ${tierLabel(state.wind.data.tier)}`,
+    )
+  }
+  if (state.bz.data) {
+    parts.push(
+      `Bz ${state.bz.data.nT.toFixed(1)} nanotesla, ${tierLabel(state.bz.data.tier)}`,
+    )
+  }
+  if (state.flare.data) {
+    parts.push(
+      `Flare class ${state.flare.data.maxClass}, ${tierLabel(state.flare.data.tier)}`,
+    )
+  }
+  return parts.length > 0 ? `${parts.join('. ')}.` : 'Acquiring space weather data.'
+}
+
 function Readout({
   label,
   loading,
@@ -75,6 +105,9 @@ function Readout({
 export function Hud({ state }: { state: SpaceWeatherState }) {
   return (
     <div className="w-full max-w-xs border-2 border-slate-700 bg-slate-900/90 p-3 font-mono shadow-[4px_4px_0_0_rgba(0,0,0,0.5)]">
+      <p className="sr-only" aria-live="polite">
+        {srSummary(state)}
+      </p>
       <div className="mb-2 text-xs uppercase tracking-[0.2em] text-slate-400">
         Space Weather Status
       </div>
