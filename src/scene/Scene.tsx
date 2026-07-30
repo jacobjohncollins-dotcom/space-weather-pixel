@@ -8,15 +8,18 @@ import { useEffect, useRef, useState } from 'react'
 import { SPRITE_SHEET_URL } from './atlas.ts'
 import { drawScene } from './draw.ts'
 import type { SceneTiers } from './draw.ts'
+import { createEffectsState, updateEffects } from './effects.ts'
+import type { EffectsState } from './effects.ts'
 import { createWindField, drawWindField, stepWindField } from './wind.ts'
 import type { WindField } from './wind.ts'
-import type { FlareTier, KpTier, WindTier } from '../data/thresholds.ts'
+import type { BzTier, FlareTier, KpTier, WindTier } from '../data/thresholds.ts'
 
 const KP_TIERS: KpTier[] = ['calm', 'unsettled', 'storm', 'severe']
 const FLARE_TIERS: FlareTier[] = ['quiet', 'small', 'strong', 'extreme']
 const WIND_TIERS: WindTier[] = ['slow', 'moderate', 'fast']
+const BZ_TIERS: BzTier[] = ['shielded', 'ripple', 'crack']
 
-const DEFAULT_TIERS: SceneTiers = { kp: 'calm', flare: 'quiet', wind: 'slow' }
+const DEFAULT_TIERS: SceneTiers = { kp: 'calm', flare: 'quiet', wind: 'slow', bz: 'shielded' }
 
 export interface SceneProps {
   tiers?: SceneTiers
@@ -28,6 +31,10 @@ export function Scene({ tiers }: SceneProps) {
   const [sheetLoaded, setSheetLoaded] = useState(false)
   const [devTiers, setDevTiers] = useState<SceneTiers>(DEFAULT_TIERS)
   const activeTiers = tiers ?? devTiers
+  // Persists across re-runs of the effect below (unlike a plain variable),
+  // so a tier change can still be diffed against what was showing a moment
+  // ago even though that effect fully remounts on every `activeTiers` change.
+  const prevTiersRef = useRef<SceneTiers>(activeTiers)
 
   useEffect(() => {
     const img = new Image()
@@ -49,6 +56,15 @@ export function Scene({ tiers }: SceneProps) {
     let width = 0
     let height = 0
     let windField: WindField | null = null
+
+    // Arm crossfade/pop timers against whatever was showing before this
+    // effect run (a fresh mount, or the last committed tier state).
+    const effectsState: EffectsState = createEffectsState(
+      prevTiersRef.current.kp,
+      prevTiersRef.current.flare,
+    )
+    updateEffects(effectsState, activeTiers.kp, activeTiers.flare, 0)
+    prevTiersRef.current = activeTiers
 
     function resize() {
       if (!canvas) return
@@ -73,7 +89,7 @@ export function Scene({ tiers }: SceneProps) {
 
       if (windField) {
         stepWindField(windField, dtSeconds, width, height)
-        drawScene(ctx!, sheet, width, height, activeTiers, time - startTime)
+        drawScene(ctx!, sheet, width, height, activeTiers, time - startTime, effectsState)
         drawWindField(ctx!, windField)
       }
 
@@ -154,6 +170,22 @@ function SceneDevControls({
           }
         >
           {WIND_TIERS.map((tier) => (
+            <option key={tier} value={tier}>
+              {tier}
+            </option>
+          ))}
+        </select>
+      </label>
+      <label className="flex items-center gap-1">
+        bz:
+        <select
+          className="border border-slate-700 bg-slate-900 px-1 py-0.5 text-slate-200"
+          value={tiers.bz}
+          onChange={(e) =>
+            onChange({ ...tiers, bz: e.target.value as BzTier })
+          }
+        >
+          {BZ_TIERS.map((tier) => (
             <option key={tier} value={tier}>
               {tier}
             </option>

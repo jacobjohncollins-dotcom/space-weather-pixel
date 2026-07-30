@@ -4,12 +4,19 @@
 
 import { getFrame } from './atlas.ts'
 import type { FrameName } from './atlas.ts'
-import type { FlareTier, KpTier, WindTier } from '../data/thresholds.ts'
+import {
+  drawMagnetosphereEffect,
+  stepFlarePop,
+  transitionProgress,
+} from './effects.ts'
+import type { EffectsState } from './effects.ts'
+import type { BzTier, FlareTier, KpTier, WindTier } from '../data/thresholds.ts'
 
 export interface SceneTiers {
   kp: KpTier
   flare: FlareTier
   wind: WindTier
+  bz: BzTier
 }
 
 export function skyFrame(kp: KpTier): FrameName {
@@ -156,6 +163,43 @@ function tileFrame(
   ctx.restore()
 }
 
+function drawFrameAlpha(
+  ctx: CanvasRenderingContext2D,
+  sheet: CanvasImageSource,
+  name: FrameName,
+  rect: Rect,
+  alpha: number,
+): void {
+  if (alpha <= 0) return
+  if (alpha >= 1) {
+    drawFrame(ctx, sheet, name, rect)
+    return
+  }
+  ctx.save()
+  ctx.globalAlpha = alpha
+  drawFrame(ctx, sheet, name, rect)
+  ctx.restore()
+}
+
+function tileFrameAlpha(
+  ctx: CanvasRenderingContext2D,
+  sheet: CanvasImageSource,
+  name: FrameName,
+  rect: Rect,
+  tileSize: number,
+  alpha: number,
+): void {
+  if (alpha <= 0) return
+  if (alpha >= 1) {
+    tileFrame(ctx, sheet, name, rect, tileSize)
+    return
+  }
+  ctx.save()
+  ctx.globalAlpha = alpha
+  tileFrame(ctx, sheet, name, rect, tileSize)
+  ctx.restore()
+}
+
 // Scales a rect around its own center — used for the sun's idle "breathing"
 // pulse so it grows/shrinks in place rather than drifting.
 function pulseRect(rect: Rect, scale: number): Rect {
@@ -169,6 +213,12 @@ function pulseRect(rect: Rect, scale: number): Rect {
 // `elapsedMs` drives the idle breathing/twinkle animation (Chunk 7): a slow
 // sinusoidal pulse on the sun's scale and the aurora's opacity. Passing 0
 // (the default) reproduces the static Chunk 6 render.
+//
+// `effects`, when supplied (Chunk 8), crossfades the sky/sun/aurora frames
+// across tier changes instead of hard-cutting between them, layers in the
+// one-shot flare shake/pop, and draws the Bz-driven magnetosphere effect
+// around earth. Omitting it (as in the Chunk 6/7 static/idle renders and
+// their tests) reproduces the old hard-cut behavior.
 export function drawScene(
   ctx: CanvasRenderingContext2D,
   sheet: CanvasImageSource,
@@ -176,22 +226,44 @@ export function drawScene(
   height: number,
   tiers: SceneTiers,
   elapsedMs = 0,
+  effects?: EffectsState,
 ): void {
   ctx.imageSmoothingEnabled = false
   ctx.clearRect(0, 0, width, height)
 
   const layout = computeLayout(width, height)
-  tileFrame(ctx, sheet, skyFrame(tiers.kp), layout.sky, layout.skyTile)
 
+  const skyProgress = effects ? transitionProgress(effects.sky, elapsedMs) : 1
+  if (skyProgress < 1) {
+    tileFrame(ctx, sheet, skyFrame(effects!.sky.prevValue), layout.sky, layout.skyTile)
+  }
+  tileFrameAlpha(ctx, sheet, skyFrame(tiers.kp), layout.sky, layout.skyTile, skyProgress)
+
+  const sunProgress = effects ? transitionProgress(effects.sun, elapsedMs) : 1
   const sunPulse = 1 + 0.025 * Math.sin(elapsedMs / 900)
-  drawFrame(ctx, sheet, sunFrame(tiers.flare), pulseRect(layout.sun, sunPulse))
-  drawFrame(ctx, sheet, 'earth', layout.earth)
+  const flarePop = effects ? stepFlarePop(effects, elapsedMs) : { shakeX: 0, shakeY: 0, scaleBoost: 0 }
+  const sunRect = pulseRect(layout.sun, sunPulse + flarePop.scaleBoost)
+  const shakenSunRect: Rect = {
+    ...sunRect,
+    x: sunRect.x + flarePop.shakeX,
+    y: sunRect.y + flarePop.shakeY,
+  }
+  if (sunProgress < 1) {
+    drawFrame(ctx, sheet, sunFrame(effects!.sun.prevValue), shakenSunRect)
+  }
+  drawFrameAlpha(ctx, sheet, sunFrame(tiers.flare), shakenSunRect, sunProgress)
 
-  const aurora = auroraFrame(tiers.kp)
-  if (aurora) {
-    ctx.save()
-    ctx.globalAlpha = 0.75 + 0.25 * Math.sin(elapsedMs / 620)
-    tileFrame(ctx, sheet, aurora, layout.aurora, layout.auroraTile)
-    ctx.restore()
+  drawFrame(ctx, sheet, 'earth', layout.earth)
+  drawMagnetosphereEffect(ctx, layout.earth, tiers.bz, elapsedMs)
+
+  const auroraProgress = effects ? transitionProgress(effects.aurora, elapsedMs) : 1
+  const twinkle = 0.75 + 0.25 * Math.sin(elapsedMs / 620)
+  const prevAurora = effects && auroraProgress < 1 ? auroraFrame(effects.aurora.prevValue) : null
+  const currAurora = auroraFrame(tiers.kp)
+  if (prevAurora) {
+    tileFrameAlpha(ctx, sheet, prevAurora, layout.aurora, layout.auroraTile, (1 - auroraProgress) * twinkle)
+  }
+  if (currAurora) {
+    tileFrameAlpha(ctx, sheet, currAurora, layout.aurora, layout.auroraTile, auroraProgress * twinkle)
   }
 }
