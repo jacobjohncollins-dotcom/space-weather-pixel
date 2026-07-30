@@ -87,6 +87,16 @@ Optional stretch: a small mascot/companion sprite (e.g. a pixel astronaut or
 satellite) whose expression changes with conditions — calm, alert, "duck and
 cover" during a strong storm.
 
+**Data visuals as scene elements**: Kp/wind/Bz/flare readouts aren't a
+separate chart widget — they're animated pixel-art graphs and a radar-style
+aurora/storm dial, drawn in the same limited palette and pixel grid as the
+sky/landscape, and physically placed within the scene (e.g. a pixel-art
+"instrument panel" built into the landscape, a radar dish sprite on the
+horizon, a scrolling pixel graph along the ground line) rather than floating
+in a separate UI panel. Keep the plain numeric HUD (Chunk 4) as the
+accessible/non-decorative fallback per Chunk 11, but the primary visual
+experience should read as one cohesive pixel-art night-sky scene.
+
 ## 6. Tech Stack (proposed)
 
 - **Frontend**: React + TypeScript + Vite (fast, simple static build).
@@ -279,8 +289,19 @@ verify "done" without needing the full conversation history.
 
 ## 10. Open Questions
 
-- Pixel art: hand-drawn by you, commissioned, or AI-generated placeholder
-  first then replaced? (Affects Phase 2 timeline.)
+- ~~Pixel art: hand-drawn by you, commissioned, or AI-generated placeholder
+  first then replaced?~~ **Resolved 2026-07-30**: simple pixel-art themes and
+  landscapes (night sky + ground scene). Data readouts (graphs, radars) are
+  rendered in the same pixel aesthetic and embedded directly into the scene
+  as part of the landscape/sky, rather than as a separate plain HUD panel —
+  see note in §5. Affects Chunk 5 (sprite pipeline should include pixel
+  graph/radar sprite states, not just sun/earth/sky/aurora) and Chunk 6
+  (scene renderer needs to composite data-driven graph/radar elements
+  alongside the environmental sprites). Chunk 4's current HUD
+  (`src/components/Hud.tsx`) is plain text-in-a-box and will likely need
+  revisiting in Phase 2/3 to match this direction, or be kept as an
+  accessible/numeric fallback alongside the pixel graphs (see Chunk 11
+  accessibility requirement for a non-decorative numeric source of truth).
 - Do we want historical/trend view (e.g. last 24h sparkline) or strictly
   "right now" snapshot for MVP?
 - Any interest in push/browser notifications for storm alerts, or keep it
