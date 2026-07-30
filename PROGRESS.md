@@ -32,10 +32,10 @@ pass) · `Reviewed` (independently verified against the Plan.md done-check)
 | # | Chunk | Status | Implemented by | Reviewed by | Notes |
 |---|-------|--------|-----------------|-------------|-------|
 | 1 | Project scaffold | Done | claude, 2026-07-30 | | Vite+React+TS+Tailwind scaffold committed (`3c5b5f4`); `npm run dev`/`build` both succeed. |
-| 2 | NOAA data client + types | Done | claude, 2026-07-30 | | `src/data/noaa.ts` + `types.ts`; Vitest fixtures for all 9 feeds, all passing. Uncommitted. |
-| 3 | Polling hook + threshold logic | Done | claude, 2026-07-30 | | `src/data/thresholds.ts` (unit tested) + `src/data/useSpaceWeather.ts` polling hook; demoed via throwaway `<pre>` dump in App.tsx. Uncommitted. |
-| 4 | HUD panel (Phase 1 complete) | Done | claude, 2026-07-30 | | `src/components/Hud.tsx` wired into `App.tsx`, replacing the Chunk 3 debug dump; per-feed loading/error handling so one failing feed doesn't blank the panel. Verified via headless browser (see chromium-cli/playwright screenshot) with live NOAA data. Uncommitted. |
-| 5 | Sprite asset pipeline | Not started | | | |
+| 2 | NOAA data client + types | Done | claude, 2026-07-30 | | `src/data/noaa.ts` + `types.ts`; Vitest fixtures for all 9 feeds, all passing. Committed (`e8d9952`); solar wind plasma/mag + K-index feeds later corrected to match NOAA's actual live schema (`6f25894`). |
+| 3 | Polling hook + threshold logic | Done | claude, 2026-07-30 | | `src/data/thresholds.ts` (unit tested) + `src/data/useSpaceWeather.ts` polling hook; demoed via throwaway `<pre>` dump in App.tsx. Committed. |
+| 4 | HUD panel (Phase 1 complete) | Done | claude, 2026-07-30 | | `src/components/Hud.tsx` wired into `App.tsx`, replacing the Chunk 3 debug dump; per-feed loading/error handling so one failing feed doesn't blank the panel. Verified via headless browser (see chromium-cli/playwright screenshot) with live NOAA data. Committed. |
+| 5 | Sprite asset pipeline | Done | claude, 2026-07-30 | | AI-generated placeholder pixel art (per resolved open question in Plan.md §10): `scripts/generate-sprites.mjs` procedurally draws a 12-frame sheet (4 sun states, earth, 3 aurora intensities, 4 sky/storm bands) to `public/sprites/sheet.png` + `atlas.json`; `src/scene/atlas.ts` gives typed frame lookups. Verified via `public/sprite-test.html`, screenshotted with Playwright — each frame crops cleanly from the sheet at its atlas coordinates. |
 | 6 | Static scene renderer (Phase 2 complete) | Not started | | | |
 | 7 | Wind + idle animation (Phase 3A) | Not started | | | |
 | 8 | Flare + storm reaction effects (Phase 3B) | Not started | | | |

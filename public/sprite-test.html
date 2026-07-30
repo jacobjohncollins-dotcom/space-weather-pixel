@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Sprite atlas test</title>
+    <style>
+      body {
+        background: #111;
+        color: #eee;
+        font-family: monospace;
+        padding: 1rem;
+      }
+      .frames {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 1rem;
+      }
+      figure {
+        margin: 0;
+        text-align: center;
+      }
+      canvas {
+        image-rendering: pixelated;
+        background: #222;
+        border: 1px solid #444;
+      }
+      figcaption {
+        margin-top: 0.25rem;
+        font-size: 0.75rem;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Sprite atlas test</h1>
+    <p>Each canvas below crops one frame out of /sprites/sheet.png using the coordinates in /sprites/atlas.json — this verifies the atlas coordinates line up with the sheet, per Chunk 5's done-check in Plan.md §9a.</p>
+    <div class="frames" id="frames"></div>
+    <script type="module">
+      const DISPLAY_SCALE = 4
+
+      const [atlas, sheet] = await Promise.all([
+        fetch('/sprites/atlas.json').then((r) => r.json()),
+        new Promise((resolve, reject) => {
+          const img = new Image()
+          img.onload = () => resolve(img)
+          img.onerror = reject
+          img.src = '/sprites/sheet.png'
+        }),
+      ])
+
+      const container = document.getElementById('frames')
+      for (const [name, frame] of Object.entries(atlas.frames)) {
+        const canvas = document.createElement('canvas')
+        canvas.width = frame.w * DISPLAY_SCALE
+        canvas.height = frame.h * DISPLAY_SCALE
+        const ctx = canvas.getContext('2d')
+        ctx.imageSmoothingEnabled = false
+        ctx.drawImage(
+          sheet,
+          frame.x,
+          frame.y,
+          frame.w,
+          frame.h,
+          0,
+          0,
+          frame.w * DISPLAY_SCALE,
+          frame.h * DISPLAY_SCALE,
+        )
+        const figure = document.createElement('figure')
+        const caption = document.createElement('figcaption')
+        caption.textContent = name
+        figure.append(canvas, caption)
+        container.append(figure)
+      }
+    </script>
+  </body>
+</html>
