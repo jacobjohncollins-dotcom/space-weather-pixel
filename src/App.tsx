@@ -45,7 +45,7 @@ function App() {
       <AlertBanner alerts={state.alerts.data} />
 
       <div className="flex w-full max-w-5xl flex-col items-center gap-4 lg:flex-row lg:items-start lg:justify-center">
-        <Scene tiers={tiers} />
+        <Scene tiers={tiers} kpHistory={state.kpHistory.data ?? undefined} />
         <Hud state={state} />
       </div>
     </div>

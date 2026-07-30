@@ -24,8 +24,13 @@ import type {
   SpaceWeatherAlert,
   XrayFluxReading,
 } from './types.ts'
+import type { KpHistoryPoint } from '../scene/sparkline.ts'
 
 export const POLL_INTERVAL_MS = 60_000
+
+// NOAA's planetary-k-index feed reports one entry per 3 hours, so 8 entries
+// covers the last 24h for the trend sparkline (Chunk 13, Plan.md §10).
+const KP_HISTORY_POINTS = 8
 
 interface Slice<T> {
   data: T | null
@@ -35,6 +40,7 @@ interface Slice<T> {
 export interface SpaceWeatherState {
   loading: boolean
   kp: Slice<{ value: number; tier: KpTier }>
+  kpHistory: Slice<KpHistoryPoint[]>
   wind: Slice<{ speedKmS: number; tier: WindTier }>
   bz: Slice<{ nT: number; tier: BzTier }>
   flare: Slice<{ maxClass: string; tier: FlareTier }>
@@ -48,6 +54,7 @@ export interface SpaceWeatherState {
 const initialState: SpaceWeatherState = {
   loading: true,
   kp: { data: null, error: null },
+  kpHistory: { data: null, error: null },
   wind: { data: null, error: null },
   bz: { data: null, error: null },
   flare: { data: null, error: null },
@@ -62,14 +69,31 @@ function errorMessage(err: unknown): string {
   return err instanceof Error ? err.message : String(err)
 }
 
-async function loadKp(): Promise<SpaceWeatherState['kp']> {
+// Single fetch shared by the `kp` and `kpHistory` slices, rather than each
+// hitting the same NOAA endpoint separately.
+async function loadKpAndHistory(): Promise<{
+  kp: SpaceWeatherState['kp']
+  kpHistory: SpaceWeatherState['kpHistory']
+}> {
   try {
     const readings = await fetchPlanetaryKIndex()
     const latest = readings.at(-1)
     if (!latest) throw new Error('no Kp readings returned')
-    return { data: { value: latest.kp, tier: kpTier(latest.kp) }, error: null }
+    const history = readings.slice(-KP_HISTORY_POINTS).map((r) => ({
+      timeTag: r.timeTag,
+      value: r.kp,
+      tier: kpTier(r.kp),
+    }))
+    return {
+      kp: { data: { value: latest.kp, tier: kpTier(latest.kp) }, error: null },
+      kpHistory: { data: history, error: null },
+    }
   } catch (err) {
-    return { data: null, error: errorMessage(err) }
+    const message = errorMessage(err)
+    return {
+      kp: { data: null, error: message },
+      kpHistory: { data: null, error: message },
+    }
   }
 }
 
@@ -173,7 +197,7 @@ export function useSpaceWeather(
 
     async function poll() {
       const [
-        kp,
+        kpAndHistory,
         wind,
         bz,
         flare,
@@ -183,7 +207,7 @@ export function useSpaceWeather(
         alerts,
         enlil,
       ] = await Promise.all([
-        loadKp(),
+        loadKpAndHistory(),
         loadWind(),
         loadBz(),
         loadFlare(),
@@ -196,7 +220,8 @@ export function useSpaceWeather(
       if (!mounted.current) return
       setState({
         loading: false,
-        kp,
+        kp: kpAndHistory.kp,
+        kpHistory: kpAndHistory.kpHistory,
         wind,
         bz,
         flare,

@@ -17,6 +17,8 @@ import { EnlilPanel } from '../components/EnlilPanel.tsx'
 import { SourcesPanel } from '../components/SourcesPanel.tsx'
 import { usePrefersReducedMotion } from '../hooks/usePrefersReducedMotion.ts'
 import { soundEngine } from './sound.ts'
+import { trendDirection } from './sparkline.ts'
+import type { KpHistoryPoint } from './sparkline.ts'
 
 const KP_LABELS: Record<KpTier, string> = {
   calm: 'calm',
@@ -39,8 +41,19 @@ const BZ_LABELS: Record<BzTier, string> = {
 // Text alternative for the canvas (Chunk 11, Plan.md §9a) — the scene is
 // otherwise a purely decorative-looking canvas with no DOM text of its own,
 // so screen reader users need a sentence describing what it currently shows.
-function sceneAriaLabel(tiers: SceneTiers): string {
-  return `Pixel-art space weather scene: ${KP_LABELS[tiers.kp]}, ${FLARE_LABELS[tiers.flare]}, ${BZ_LABELS[tiers.bz]}.`
+const TREND_LABELS = {
+  rising: 'Kp trend rising over the last 24 hours.',
+  falling: 'Kp trend falling over the last 24 hours.',
+  steady: 'Kp trend steady over the last 24 hours.',
+}
+
+function sceneAriaLabel(
+  tiers: SceneTiers,
+  kpHistory: KpHistoryPoint[],
+): string {
+  const base = `Pixel-art space weather scene: ${KP_LABELS[tiers.kp]}, ${FLARE_LABELS[tiers.flare]}, ${BZ_LABELS[tiers.bz]}.`
+  const trend = trendDirection(kpHistory)
+  return trend ? `${base} ${TREND_LABELS[trend]}` : base
 }
 
 const KP_TIERS: KpTier[] = ['calm', 'unsettled', 'storm', 'severe']
@@ -49,12 +62,17 @@ const WIND_TIERS: WindTier[] = ['slow', 'moderate', 'fast']
 const BZ_TIERS: BzTier[] = ['shielded', 'ripple', 'crack']
 
 const DEFAULT_TIERS: SceneTiers = { kp: 'calm', flare: 'quiet', wind: 'slow', bz: 'shielded' }
+// Stable reference so the default-prop case doesn't create a new array every
+// render, which would otherwise re-trigger the canvas effect's dependency
+// array on every render even when nothing actually changed.
+const EMPTY_KP_HISTORY: KpHistoryPoint[] = []
 
 export interface SceneProps {
   tiers?: SceneTiers
+  kpHistory?: KpHistoryPoint[]
 }
 
-export function Scene({ tiers }: SceneProps) {
+export function Scene({ tiers, kpHistory = EMPTY_KP_HISTORY }: SceneProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const sheetRef = useRef<HTMLImageElement | null>(null)
   const [sheetLoaded, setSheetLoaded] = useState(false)
@@ -99,7 +117,7 @@ export function Scene({ tiers }: SceneProps) {
         canvas.width = Math.round(width * dpr)
         canvas.height = Math.round(height * dpr)
         ctx!.setTransform(dpr, 0, 0, dpr, 0, 0)
-        drawScene(ctx!, sheet, width, height, activeTiers)
+        drawScene(ctx!, sheet, width, height, activeTiers, 0, undefined, kpHistory)
       }
 
       resizeStatic()
@@ -150,7 +168,7 @@ export function Scene({ tiers }: SceneProps) {
 
       if (windField) {
         stepWindField(windField, dtSeconds, width, height)
-        drawScene(ctx!, sheet, width, height, activeTiers, time - startTime, effectsState)
+        drawScene(ctx!, sheet, width, height, activeTiers, time - startTime, effectsState, kpHistory)
         drawWindField(ctx!, windField)
       }
 
@@ -164,7 +182,7 @@ export function Scene({ tiers }: SceneProps) {
       cancelAnimationFrame(rafId)
       observer.disconnect()
     }
-  }, [sheetLoaded, activeTiers, prefersReducedMotion])
+  }, [sheetLoaded, activeTiers, prefersReducedMotion, kpHistory])
 
   return (
     <div className="flex w-full max-w-2xl flex-col items-center gap-2">
@@ -172,7 +190,7 @@ export function Scene({ tiers }: SceneProps) {
         <canvas
           ref={canvasRef}
           role="img"
-          aria-label={sceneAriaLabel(activeTiers)}
+          aria-label={sceneAriaLabel(activeTiers, kpHistory)}
           className="h-full w-full border-2 border-slate-700 bg-slate-950"
           style={{ imageRendering: 'pixelated' }}
         />

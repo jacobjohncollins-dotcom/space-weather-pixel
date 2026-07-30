@@ -11,6 +11,8 @@ import {
 } from './effects.ts'
 import type { EffectsState } from './effects.ts'
 import { overallSeverity } from './severity.ts'
+import { computeSparklineBars } from './sparkline.ts'
+import type { KpHistoryPoint } from './sparkline.ts'
 import type { BzTier, FlareTier, KpTier, WindTier } from '../data/thresholds.ts'
 
 export interface SceneTiers {
@@ -87,6 +89,7 @@ interface Layout {
   auroraTile: number
   dish: Rect
   mascot: Rect
+  kpTrend: Rect
 }
 
 // Ground position of the radar-dish prop, as fractions of canvas width/
@@ -142,7 +145,47 @@ export function computeLayout(width: number, height: number): Layout {
       w: width * 0.12,
       h: width * 0.12,
     },
+    // Open sky between the mascot and the sun, above the aurora band (which
+    // starts around 0.24) — a small "instrument screen" readout floating in
+    // the scene rather than a separate chart widget (Chunk 13, Plan.md §10).
+    kpTrend: {
+      x: width * 0.3,
+      y: height * 0.06,
+      w: width * 0.34,
+      h: height * 0.14,
+    },
   }
+}
+
+// Small pixel-art bar-chart "instrument screen" showing the last 24h of Kp
+// readings (Chunk 13). Drawn with plain canvas rects rather than sprite
+// frames since the bar count is data-driven, not a fixed frame.
+function drawKpTrend(
+  ctx: CanvasRenderingContext2D,
+  rect: Rect,
+  history: KpHistoryPoint[],
+): void {
+  if (history.length === 0) return
+
+  ctx.save()
+  ctx.fillStyle = 'rgba(2, 6, 23, 0.85)'
+  ctx.fillRect(rect.x, rect.y, rect.w, rect.h)
+  ctx.strokeStyle = 'rgba(71, 85, 105, 0.9)'
+  ctx.lineWidth = 1
+  ctx.strokeRect(rect.x + 0.5, rect.y + 0.5, rect.w - 1, rect.h - 1)
+
+  const inset = 2
+  const barRect: Rect = {
+    x: rect.x + inset,
+    y: rect.y + inset,
+    w: rect.w - inset * 2,
+    h: rect.h - inset * 2,
+  }
+  for (const bar of computeSparklineBars(history, barRect)) {
+    ctx.fillStyle = bar.color
+    ctx.fillRect(bar.rect.x, bar.rect.y, bar.rect.w, bar.rect.h)
+  }
+  ctx.restore()
 }
 
 function drawFrame(
@@ -263,6 +306,7 @@ export function drawScene(
   tiers: SceneTiers,
   elapsedMs = 0,
   effects?: EffectsState,
+  kpHistory: KpHistoryPoint[] = [],
 ): void {
   ctx.imageSmoothingEnabled = false
   ctx.clearRect(0, 0, width, height)
@@ -301,6 +345,8 @@ export function drawScene(
     ...layout.mascot,
     y: layout.mascot.y + mascotBob,
   })
+
+  drawKpTrend(ctx, layout.kpTrend, kpHistory)
 
   const auroraProgress = effects ? transitionProgress(effects.aurora, elapsedMs) : 1
   const twinkle = 0.75 + 0.25 * Math.sin(elapsedMs / 620)
