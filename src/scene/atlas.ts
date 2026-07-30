@@ -13,7 +13,12 @@ export interface SpriteFrame {
   h: number
 }
 
-export const SPRITE_SHEET_URL = atlasData.sheet
+// atlas.json stores a root-absolute path; Vite only rewrites asset URLs it
+// can see at build time (import statements, CSS, index.html), not strings
+// loaded from JSON, so this has to be joined with BASE_URL by hand to work
+// under GitHub Pages' /space-weather-pixel/ subpath instead of just "/".
+export const SPRITE_SHEET_URL =
+  import.meta.env.BASE_URL.replace(/\/$/, '') + atlasData.sheet
 export const SPRITE_CELL_SIZE = atlasData.cellSize
 
 const frames = atlasData.frames as Record<FrameName, SpriteFrame>
