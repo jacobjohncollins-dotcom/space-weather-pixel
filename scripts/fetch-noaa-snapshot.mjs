@@ -44,8 +44,17 @@ async function refreshEnlilImage(frames) {
   writeFileSync(join(outDir, localImageName), bytes)
 
   // Only the last frame is ever read (useSpaceWeather.ts takes frames.at(-1)),
-  // so only it needs to point at the locally mirrored image.
-  return [...frames.slice(0, -1), { ...latest, url: `/data/${localImageName}` }]
+  // so only it needs to point at the locally mirrored image. Real NOAA
+  // frames only have `url`, no `time` field (unlike the fixture this app's
+  // types were modeled on) — stash the original NOAA filename as `time`
+  // instead, both satisfying parseEnlilAnimation's expected shape and
+  // giving EnlilPanel's cache-busting query a real per-snapshot value
+  // rather than `undefined`, since the fixed local filename would
+  // otherwise look identical to the browser across snapshots.
+  return [
+    ...frames.slice(0, -1),
+    { time: latest.url, url: `/data/${localImageName}` },
+  ]
 }
 
 async function main() {
