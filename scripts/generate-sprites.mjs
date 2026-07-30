@@ -19,7 +19,7 @@ const LOGICAL = 16
 const SCALE = 2
 const CELL = LOGICAL * SCALE
 const COLUMNS = 4
-const ROWS = 3
+const ROWS = 4
 const SHEET_W = CELL * COLUMNS
 const SHEET_H = CELL * ROWS
 
@@ -111,6 +111,45 @@ function drawAurora(intensity) {
   return g
 }
 
+// Ground-level dish antenna prop (Chunk 9) — the console the ENLIL/sources
+// readouts are anchored to in the scene, so those readouts render as part
+// of the landscape instead of a separate floating widget (Plan.md §5).
+function drawDish() {
+  const g = makeGrid()
+  const metal = hex(120, 130, 150)
+  const metalDark = hex(70, 78, 96)
+  const glow = hex(90, 220, 210)
+
+  // stand
+  for (let y = 10; y < 15; y++) {
+    g[y][7] = metalDark
+    g[y][8] = metalDark
+  }
+  g[14][6] = metalDark
+  g[14][9] = metalDark
+
+  // dish bowl (arc opening upward)
+  const cx = 7.5
+  const cy = 8
+  const r = 5
+  for (let x = 0; x < LOGICAL; x++) {
+    for (let y = 0; y < LOGICAL; y++) {
+      const d = dist(x, y, cx, cy)
+      if (d >= r - 1 && d <= r && y <= cy) {
+        g[y][x] = metal
+      }
+    }
+  }
+  // dish rim highlight
+  g[cy - r][Math.round(cx)] = hex(200, 210, 225)
+
+  // signal light on the mast
+  g[9][7] = glow
+  g[9][8] = glow
+
+  return g
+}
+
 function drawSky(stormLevel) {
   const palettes = {
     quiet: { bg: hex(10, 12, 40), star: hex(220, 220, 255), density: 10 },
@@ -146,6 +185,8 @@ const FRAMES = [
   { name: 'sky-active', row: 2, col: 1, grid: drawSky('active') },
   { name: 'sky-storm', row: 2, col: 2, grid: drawSky('storm') },
   { name: 'sky-severe', row: 2, col: 3, grid: drawSky('severe') },
+
+  { name: 'radar-dish', row: 3, col: 0, grid: drawDish() },
 ]
 
 const png = new PNG({ width: SHEET_W, height: SHEET_H })

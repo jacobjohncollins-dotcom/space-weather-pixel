@@ -13,6 +13,8 @@ import type { EffectsState } from './effects.ts'
 import { createWindField, drawWindField, stepWindField } from './wind.ts'
 import type { WindField } from './wind.ts'
 import type { BzTier, FlareTier, KpTier, WindTier } from '../data/thresholds.ts'
+import { EnlilPanel } from '../components/EnlilPanel.tsx'
+import { SourcesPanel } from '../components/SourcesPanel.tsx'
 
 const KP_TIERS: KpTier[] = ['calm', 'unsettled', 'storm', 'severe']
 const FLARE_TIERS: FlareTier[] = ['quiet', 'small', 'strong', 'extreme']
@@ -107,11 +109,15 @@ export function Scene({ tiers }: SceneProps) {
 
   return (
     <div className="flex w-full max-w-2xl flex-col items-center gap-2">
-      <canvas
-        ref={canvasRef}
-        className="aspect-[16/10] w-full border-2 border-slate-700 bg-slate-950"
-        style={{ imageRendering: 'pixelated' }}
-      />
+      <div className="relative aspect-[16/10] w-full">
+        <canvas
+          ref={canvasRef}
+          className="h-full w-full border-2 border-slate-700 bg-slate-950"
+          style={{ imageRendering: 'pixelated' }}
+        />
+        <EnlilPanel />
+        <SourcesPanel />
+      </div>
       {import.meta.env.DEV && tiers === undefined && (
         <SceneDevControls tiers={devTiers} onChange={setDevTiers} />
       )}

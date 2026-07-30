@@ -73,7 +73,16 @@ interface Layout {
   earth: Rect
   aurora: Rect
   auroraTile: number
+  dish: Rect
 }
+
+// Ground position of the radar-dish prop, as fractions of canvas width/
+// height. `src/components/EnlilPanel.tsx` and `SourcesPanel.tsx` reuse
+// these same fractions (as CSS percentages) to anchor their readouts to
+// this prop in the landscape, so the ENLIL/sources UI reads as console
+// panels built into the scene rather than a separate floating widget
+// (Plan.md §5, Chunk 9).
+export const DISH_RECT_FRACTIONS = { x: 0.03, y: 0.62, w: 0.16, h: 0.16 }
 
 // All positions/sizes are fractions of the canvas size so the layout holds
 // up across canvas dimensions/resolutions (Chunk 6 done-check). The sky and
@@ -106,6 +115,12 @@ export function computeLayout(width: number, height: number): Layout {
       h: earthSize * 0.3,
     },
     auroraTile: width / 20,
+    dish: {
+      x: width * DISH_RECT_FRACTIONS.x,
+      y: height * DISH_RECT_FRACTIONS.y,
+      w: width * DISH_RECT_FRACTIONS.w,
+      h: height * DISH_RECT_FRACTIONS.h,
+    },
   }
 }
 
@@ -255,6 +270,8 @@ export function drawScene(
 
   drawFrame(ctx, sheet, 'earth', layout.earth)
   drawMagnetosphereEffect(ctx, layout.earth, tiers.bz, elapsedMs)
+
+  drawFrame(ctx, sheet, 'radar-dish', layout.dish)
 
   const auroraProgress = effects ? transitionProgress(effects.aurora, elapsedMs) : 1
   const twinkle = 0.75 + 0.25 * Math.sin(elapsedMs / 620)
