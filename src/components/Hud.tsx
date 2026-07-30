@@ -4,7 +4,6 @@
 // whole panel.
 
 import type { ReactNode } from 'react'
-import { useSpaceWeather } from '../data/useSpaceWeather.ts'
 import type { SpaceWeatherState } from '../data/useSpaceWeather.ts'
 
 type Slice<T> = { data: T | null; error: string | null }
@@ -73,9 +72,7 @@ function Readout({
   )
 }
 
-export function Hud() {
-  const state: SpaceWeatherState = useSpaceWeather()
-
+export function Hud({ state }: { state: SpaceWeatherState }) {
   return (
     <div className="w-full max-w-xs border-2 border-slate-700 bg-slate-900/90 p-3 font-mono shadow-[4px_4px_0_0_rgba(0,0,0,0.5)]">
       <div className="mb-2 text-xs uppercase tracking-[0.2em] text-slate-400">
