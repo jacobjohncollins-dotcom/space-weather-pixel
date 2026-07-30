@@ -4,8 +4,9 @@
 // ENLIL/sources panels) since it's a time-critical notice, not ambient
 // status — it needs to interrupt, not blend in.
 
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { latestAlert } from './alertSelection.ts'
+import { soundEngine } from '../scene/sound.ts'
 import type { SpaceWeatherAlert } from '../data/types.ts'
 
 export function AlertBanner({
@@ -15,6 +16,17 @@ export function AlertBanner({
 }) {
   const [dismissedId, setDismissedId] = useState<string | null>(null)
   const alert = latestAlert(alerts)
+  // Tracks the last alert a chime already played for, so re-renders from
+  // unrelated polls (or the same alert persisting across polls) don't
+  // replay the chime — only a genuinely new productId does (Chunk 12).
+  const chimedForId = useRef<string | null>(null)
+
+  useEffect(() => {
+    if (alert && alert.productId !== chimedForId.current) {
+      chimedForId.current = alert.productId
+      soundEngine.playStormAlert()
+    }
+  }, [alert])
 
   if (!alert || alert.productId === dismissedId) return null
 

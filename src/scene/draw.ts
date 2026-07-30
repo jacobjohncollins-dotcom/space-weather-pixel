@@ -10,6 +10,7 @@ import {
   transitionProgress,
 } from './effects.ts'
 import type { EffectsState } from './effects.ts'
+import { overallSeverity } from './severity.ts'
 import type { BzTier, FlareTier, KpTier, WindTier } from '../data/thresholds.ts'
 
 export interface SceneTiers {
@@ -45,6 +46,17 @@ export function sunFrame(flare: FlareTier): FrameName {
   }
 }
 
+const MASCOT_FRAMES: FrameName[] = [
+  'mascot-calm',
+  'mascot-unsettled',
+  'mascot-storm',
+  'mascot-severe',
+]
+
+export function mascotFrame(tiers: SceneTiers): FrameName {
+  return MASCOT_FRAMES[overallSeverity(tiers)]
+}
+
 // Aurora only becomes visible once geomagnetic activity picks up.
 export function auroraFrame(kp: KpTier): FrameName | null {
   switch (kp) {
@@ -74,6 +86,7 @@ interface Layout {
   aurora: Rect
   auroraTile: number
   dish: Rect
+  mascot: Rect
 }
 
 // Ground position of the radar-dish prop, as fractions of canvas width/
@@ -120,6 +133,14 @@ export function computeLayout(width: number, height: number): Layout {
       y: height * DISH_RECT_FRACTIONS.y,
       w: width * DISH_RECT_FRACTIONS.w,
       h: height * DISH_RECT_FRACTIONS.h,
+    },
+    // Top-left sky, clear of the sun (top-right), the dish/ENLIL readout
+    // (bottom-left), and the sources signpost (bottom-right).
+    mascot: {
+      x: width * 0.06,
+      y: height * 0.08,
+      w: width * 0.12,
+      h: width * 0.12,
     },
   }
 }
@@ -272,6 +293,14 @@ export function drawScene(
   drawMagnetosphereEffect(ctx, layout.earth, tiers.bz, elapsedMs)
 
   drawFrame(ctx, sheet, 'radar-dish', layout.dish)
+
+  // Idle bob, same idea as the sun's breathing pulse (Chunk 7) — a bit of
+  // motion so the mascot reads as alive rather than a static sticker.
+  const mascotBob = Math.sin(elapsedMs / 700) * layout.mascot.h * 0.06
+  drawFrame(ctx, sheet, mascotFrame(tiers), {
+    ...layout.mascot,
+    y: layout.mascot.y + mascotBob,
+  })
 
   const auroraProgress = effects ? transitionProgress(effects.aurora, elapsedMs) : 1
   const twinkle = 0.75 + 0.25 * Math.sin(elapsedMs / 620)

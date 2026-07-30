@@ -16,6 +16,7 @@ import type { BzTier, FlareTier, KpTier, WindTier } from '../data/thresholds.ts'
 import { EnlilPanel } from '../components/EnlilPanel.tsx'
 import { SourcesPanel } from '../components/SourcesPanel.tsx'
 import { usePrefersReducedMotion } from '../hooks/usePrefersReducedMotion.ts'
+import { soundEngine } from './sound.ts'
 
 const KP_LABELS: Record<KpTier, string> = {
   calm: 'calm',
@@ -118,6 +119,13 @@ export function Scene({ tiers }: SceneProps) {
     )
     updateEffects(effectsState, activeTiers.kp, activeTiers.flare, 0)
     prevTiersRef.current = activeTiers
+
+    // A pop is armed only on a quiet -> strong/extreme transition (see
+    // effects.ts), so this fires exactly once per flare, matching the
+    // one-shot visual shake/pop rather than looping with it.
+    if (effectsState.flarePopStart !== null) {
+      soundEngine.playFlarePop()
+    }
 
     function resize() {
       if (!canvas) return

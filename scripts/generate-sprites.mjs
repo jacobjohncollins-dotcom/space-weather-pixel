@@ -19,7 +19,7 @@ const LOGICAL = 16
 const SCALE = 2
 const CELL = LOGICAL * SCALE
 const COLUMNS = 4
-const ROWS = 4
+const ROWS = 5
 const SHEET_W = CELL * COLUMNS
 const SHEET_H = CELL * ROWS
 
@@ -150,6 +150,80 @@ function drawDish() {
   return g
 }
 
+// Companion mascot (Chunk 12) — a small floating drone whose body color and
+// eye/mouth shape shift with the overall "worst of all feeds" severity
+// (src/scene/severity.ts), so it reads as a quick emotional summary of the
+// scene without adding any new text.
+function drawMascot(mood) {
+  const g = makeGrid()
+  const bodyColor = {
+    calm: hex(120, 210, 170),
+    unsettled: hex(230, 205, 90),
+    storm: hex(235, 145, 70),
+    severe: hex(235, 80, 80),
+  }[mood]
+  const dark = hex(30, 34, 40)
+  const antennaGlow = mood === 'severe' ? hex(255, 100, 100) : hex(210, 220, 235)
+  const cx = 7.5
+  const cy = 8.5
+  const r = 5
+
+  for (let y = 0; y < LOGICAL; y++) {
+    for (let x = 0; x < LOGICAL; x++) {
+      if (dist(x, y, cx, cy) <= r) g[y][x] = bodyColor
+    }
+  }
+
+  // antenna
+  g[2][7] = dark
+  g[1][7] = antennaGlow
+
+  // eyes + mouth per mood
+  if (mood === 'calm') {
+    g[7][5] = dark
+    g[7][10] = dark
+    g[10][6] = dark
+    g[11][7] = dark
+    g[11][8] = dark
+    g[10][9] = dark
+  } else if (mood === 'unsettled') {
+    g[6][5] = dark
+    g[7][5] = dark
+    g[6][10] = dark
+    g[7][10] = dark
+    g[11][6] = dark
+    g[11][7] = dark
+    g[11][8] = dark
+    g[11][9] = dark
+  } else if (mood === 'storm') {
+    g[6][5] = dark
+    g[7][5] = dark
+    g[6][10] = dark
+    g[7][10] = dark
+    g[10][7] = dark
+    g[11][6] = dark
+    g[11][9] = dark
+    g[12][7] = dark
+    g[12][8] = dark
+  } else {
+    // severe: X eyes, open worried mouth
+    g[6][4] = dark
+    g[7][5] = dark
+    g[6][6] = dark
+    g[6][9] = dark
+    g[7][10] = dark
+    g[6][11] = dark
+    g[10][6] = dark
+    g[10][9] = dark
+    g[11][6] = dark
+    g[11][9] = dark
+    g[12][7] = dark
+    g[12][8] = dark
+  }
+
+  return g
+}
+
 function drawSky(stormLevel) {
   const palettes = {
     quiet: { bg: hex(10, 12, 40), star: hex(220, 220, 255), density: 10 },
@@ -187,6 +261,11 @@ const FRAMES = [
   { name: 'sky-severe', row: 2, col: 3, grid: drawSky('severe') },
 
   { name: 'radar-dish', row: 3, col: 0, grid: drawDish() },
+
+  { name: 'mascot-calm', row: 4, col: 0, grid: drawMascot('calm') },
+  { name: 'mascot-unsettled', row: 4, col: 1, grid: drawMascot('unsettled') },
+  { name: 'mascot-storm', row: 4, col: 2, grid: drawMascot('storm') },
+  { name: 'mascot-severe', row: 4, col: 3, grid: drawMascot('severe') },
 ]
 
 const png = new PNG({ width: SHEET_W, height: SHEET_H })
