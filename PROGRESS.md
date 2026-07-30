@@ -1,0 +1,45 @@
+# Chunk Progress Tracker
+
+Tracks the chunked work breakdown in [Plan.md §9a](Plan.md#9a-chunked-work-breakdown-each-chunk-sized-to-fit-in-a-single).
+Any AI agent (or human) picking up work here should update this file as part
+of finishing a chunk — this is the review system: a chunk isn't "reviewed"
+just because the author says it's done.
+
+## How to use this
+
+1. **Before starting**, check this table for the next chunk that is not yet
+   `Done`/`Reviewed`, and check nothing else is already `In progress` on it
+   (multiple sessions may share this repo — check `git status` / untracked
+   files, not just this table, since it can lag).
+2. **When you finish implementing a chunk**, set its status to `Done`, fill
+   in `Implemented by` (agent/session identifier + date) and a one-line note
+   on what you built and how you verified it against the "Done" check in
+   Plan.md §9a.
+3. **Reviewing**: a chunk should only move from `Done` to `Reviewed` after a
+   *different* session (a fresh agent, or the same agent in a later,
+   independent pass — not just re-reading its own work) re-checks the "Done"
+   criteria from scratch: reruns tests, rebuilds, and/or actually looks at
+   the running app. Record what you checked in `Notes`. If review finds a
+   problem, set status back to `In progress` and note why.
+4. Never mark `Reviewed` for your own `Done` entry in the same sitting —
+   the point is an independent check.
+
+## Status legend
+
+`Not started` · `In progress` · `Done` (implemented, unverified by a second
+pass) · `Reviewed` (independently verified against the Plan.md done-check)
+
+| # | Chunk | Status | Implemented by | Reviewed by | Notes |
+|---|-------|--------|-----------------|-------------|-------|
+| 1 | Project scaffold | Done | claude, 2026-07-30 | | Vite+React+TS+Tailwind scaffold committed (`3c5b5f4`); `npm run dev`/`build` both succeed. |
+| 2 | NOAA data client + types | Done | claude, 2026-07-30 | | `src/data/noaa.ts` + `types.ts`; Vitest fixtures for all 9 feeds, all passing. Uncommitted. |
+| 3 | Polling hook + threshold logic | Done | claude, 2026-07-30 | | `src/data/thresholds.ts` (unit tested) + `src/data/useSpaceWeather.ts` polling hook; demoed via throwaway `<pre>` dump in App.tsx. Uncommitted. |
+| 4 | HUD panel (Phase 1 complete) | Done | claude, 2026-07-30 | | `src/components/Hud.tsx` wired into `App.tsx`, replacing the Chunk 3 debug dump; per-feed loading/error handling so one failing feed doesn't blank the panel. Verified via headless browser (see chromium-cli/playwright screenshot) with live NOAA data. Uncommitted. |
+| 5 | Sprite asset pipeline | Not started | | | |
+| 6 | Static scene renderer (Phase 2 complete) | Not started | | | |
+| 7 | Wind + idle animation (Phase 3A) | Not started | | | |
+| 8 | Flare + storm reaction effects (Phase 3B) | Not started | | | |
+| 9 | ENLIL thumbnail + "Go Deeper" links (Phase 4) | Not started | | | |
+| 10 | Layout assembly + responsiveness | Not started | | | |
+| 11 | Accessibility + reduced motion + alerts (Phase 5) | Not started | | | |
+| 12 | Optional sound + mascot polish | Not started | | | |
