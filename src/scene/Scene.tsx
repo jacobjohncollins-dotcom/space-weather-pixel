@@ -1,0 +1,121 @@
+// Canvas scene renderer (Chunk 6, Plan.md §9a). Composites the static
+// sky/sun/earth/aurora sprite layers for the current tier state. In dev
+// builds, when no `tiers` prop is supplied, a small control panel lets you
+// step through tier states manually to check the sprite swap and layout
+// at different canvas sizes.
+
+import { useEffect, useRef, useState } from 'react'
+import { SPRITE_SHEET_URL } from './atlas.ts'
+import { drawScene } from './draw.ts'
+import type { SceneTiers } from './draw.ts'
+import type { FlareTier, KpTier } from '../data/thresholds.ts'
+
+const KP_TIERS: KpTier[] = ['calm', 'unsettled', 'storm', 'severe']
+const FLARE_TIERS: FlareTier[] = ['quiet', 'small', 'strong', 'extreme']
+
+const DEFAULT_TIERS: SceneTiers = { kp: 'calm', flare: 'quiet' }
+
+export interface SceneProps {
+  tiers?: SceneTiers
+}
+
+export function Scene({ tiers }: SceneProps) {
+  const canvasRef = useRef<HTMLCanvasElement>(null)
+  const sheetRef = useRef<HTMLImageElement | null>(null)
+  const [sheetLoaded, setSheetLoaded] = useState(false)
+  const [devTiers, setDevTiers] = useState<SceneTiers>(DEFAULT_TIERS)
+  const activeTiers = tiers ?? devTiers
+
+  useEffect(() => {
+    const img = new Image()
+    img.onload = () => {
+      sheetRef.current = img
+      setSheetLoaded(true)
+    }
+    img.src = SPRITE_SHEET_URL
+  }, [])
+
+  useEffect(() => {
+    const canvas = canvasRef.current
+    if (!canvas || !sheetLoaded || !sheetRef.current) return
+
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return
+    const sheet = sheetRef.current
+
+    function render() {
+      if (!ctx || !canvas) return
+      const dpr = window.devicePixelRatio || 1
+      const width = canvas.clientWidth
+      const height = canvas.clientHeight
+      canvas.width = Math.round(width * dpr)
+      canvas.height = Math.round(height * dpr)
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
+      drawScene(ctx, sheet, width, height, activeTiers)
+    }
+
+    render()
+
+    const observer = new ResizeObserver(render)
+    observer.observe(canvas)
+    return () => observer.disconnect()
+  }, [sheetLoaded, activeTiers])
+
+  return (
+    <div className="flex w-full max-w-2xl flex-col items-center gap-2">
+      <canvas
+        ref={canvasRef}
+        className="aspect-[16/10] w-full border-2 border-slate-700 bg-slate-950"
+        style={{ imageRendering: 'pixelated' }}
+      />
+      {import.meta.env.DEV && tiers === undefined && (
+        <SceneDevControls tiers={devTiers} onChange={setDevTiers} />
+      )}
+    </div>
+  )
+}
+
+function SceneDevControls({
+  tiers,
+  onChange,
+}: {
+  tiers: SceneTiers
+  onChange: (tiers: SceneTiers) => void
+}) {
+  return (
+    <div className="flex flex-wrap items-center gap-3 font-mono text-xs text-slate-400">
+      <label className="flex items-center gap-1">
+        kp:
+        <select
+          className="border border-slate-700 bg-slate-900 px-1 py-0.5 text-slate-200"
+          value={tiers.kp}
+          onChange={(e) =>
+            onChange({ ...tiers, kp: e.target.value as KpTier })
+          }
+        >
+          {KP_TIERS.map((tier) => (
+            <option key={tier} value={tier}>
+              {tier}
+            </option>
+          ))}
+        </select>
+      </label>
+      <label className="flex items-center gap-1">
+        flare:
+        <select
+          className="border border-slate-700 bg-slate-900 px-1 py-0.5 text-slate-200"
+          value={tiers.flare}
+          onChange={(e) =>
+            onChange({ ...tiers, flare: e.target.value as FlareTier })
+          }
+        >
+          {FLARE_TIERS.map((tier) => (
+            <option key={tier} value={tier}>
+              {tier}
+            </option>
+          ))}
+        </select>
+      </label>
+    </div>
+  )
+}
