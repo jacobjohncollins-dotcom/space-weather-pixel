@@ -30,31 +30,36 @@ async function fetchFeed(remote) {
   return response.json()
 }
 
+// NOAA's enlil.json is really an animation reel (~169 frames spanning
+// several days at roughly hourly cadence) — EnlilPanel plays the most
+// recent ENLIL_FRAME_COUNT of them as a looping sequence rather than a
+// single static image. Downloading all 169 on every ~15-minute snapshot
+// would be wasteful bandwidth for a loop that only needs to cover roughly
+// the last day.
+const ENLIL_FRAME_COUNT = 18
+
 async function refreshEnlilImage(frames) {
-  const latest = frames.at(-1)
-  if (!latest?.url) return frames
+  const recent = frames.slice(-ENLIL_FRAME_COUNT)
+  if (recent.length === 0) return frames
 
-  const ext = extname(latest.url) || '.jpg'
-  const localImageName = `enlil-latest${ext}`
-  const imageResponse = await fetch(`${NOAA_BASE_URL}${latest.url}`)
-  if (!imageResponse.ok) {
-    throw new Error(`ENLIL image ${latest.url} responded with ${imageResponse.status}`)
+  const mirrored = []
+  for (const [i, frame] of recent.entries()) {
+    if (!frame.url) continue
+    const ext = extname(frame.url) || '.jpg'
+    const localImageName = `enlil-frame-${i}${ext}`
+    const imageResponse = await fetch(`${NOAA_BASE_URL}${frame.url}`)
+    if (!imageResponse.ok) {
+      throw new Error(`ENLIL image ${frame.url} responded with ${imageResponse.status}`)
+    }
+    const bytes = Buffer.from(await imageResponse.arrayBuffer())
+    writeFileSync(join(outDir, localImageName), bytes)
+    // Real NOAA frames only have `url`, no `time` field (unlike the fixture
+    // this app's types were modeled on) — stash the original NOAA filename
+    // as `time` instead, both satisfying parseEnlilAnimation's expected
+    // shape and giving each frame a real per-snapshot cache-busting value.
+    mirrored.push({ time: frame.url, url: `/data/${localImageName}` })
   }
-  const bytes = Buffer.from(await imageResponse.arrayBuffer())
-  writeFileSync(join(outDir, localImageName), bytes)
-
-  // Only the last frame is ever read (useSpaceWeather.ts takes frames.at(-1)),
-  // so only it needs to point at the locally mirrored image. Real NOAA
-  // frames only have `url`, no `time` field (unlike the fixture this app's
-  // types were modeled on) — stash the original NOAA filename as `time`
-  // instead, both satisfying parseEnlilAnimation's expected shape and
-  // giving EnlilPanel's cache-busting query a real per-snapshot value
-  // rather than `undefined`, since the fixed local filename would
-  // otherwise look identical to the browser across snapshots.
-  return [
-    ...frames.slice(0, -1),
-    { time: latest.url, url: `/data/${localImageName}` },
-  ]
+  return mirrored
 }
 
 async function main() {

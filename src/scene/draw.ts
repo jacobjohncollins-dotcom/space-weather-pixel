@@ -13,6 +13,7 @@ import type { EffectsState } from './effects.ts'
 import { overallSeverity } from './severity.ts'
 import { computeSparklineBars } from './sparkline.ts'
 import type { KpHistoryPoint } from './sparkline.ts'
+import { drawNightSky } from './starfield.ts'
 import type { BzTier, FlareTier, KpTier, WindTier } from '../data/thresholds.ts'
 
 export interface SceneTiers {
@@ -20,19 +21,6 @@ export interface SceneTiers {
   flare: FlareTier
   wind: WindTier
   bz: BzTier
-}
-
-export function skyFrame(kp: KpTier): FrameName {
-  switch (kp) {
-    case 'calm':
-      return 'sky-quiet'
-    case 'unsettled':
-      return 'sky-active'
-    case 'storm':
-      return 'sky-storm'
-    case 'severe':
-      return 'sky-severe'
-  }
 }
 
 export function sunFrame(flare: FlareTier): FrameName {
@@ -82,7 +70,6 @@ interface Rect {
 
 interface Layout {
   sky: Rect
-  skyTile: number
   sun: Rect
   earth: Rect
   aurora: Rect
@@ -101,17 +88,17 @@ interface Layout {
 export const DISH_RECT_FRACTIONS = { x: 0.03, y: 0.62, w: 0.16, h: 0.16 }
 
 // All positions/sizes are fractions of the canvas size so the layout holds
-// up across canvas dimensions/resolutions (Chunk 6 done-check). The sky and
-// aurora sprites are small streak/wave motifs (see public/sprites/sheet.png)
-// meant to repeat as a texture, not stretch as a single blown-up image, so
-// their frames are tiled rather than scaled to fill their rect.
+// up across canvas dimensions/resolutions (Chunk 6 done-check). The aurora
+// sprite is a small streak/wave motif (see public/sprites/sheet.png) meant
+// to repeat as a texture, not stretch as a single blown-up image, so its
+// frame is tiled rather than scaled to fill its rect. The sky background is
+// procedural (starfield.ts), not a sprite, so it has no tile size.
 export function computeLayout(width: number, height: number): Layout {
   const sunSize = width * 0.22
   const earthSize = width * 0.5
 
   return {
     sky: { x: 0, y: 0, w: width, h: height },
-    skyTile: width / 14,
     sun: {
       x: width * 0.72,
       y: height * 0.08,
@@ -289,6 +276,55 @@ function pulseRect(rect: Rect, scale: number): Rect {
   return { x: cx - w / 2, y: cy - h / 2, w, h }
 }
 
+// Soft radial "bloom" behind a sprite, drawn with an additive blend so it
+// lights the sky around it rather than sitting as a flat colored disc. Used
+// for the sun (tier-tinted, boosted during a flare pop), earth's atmosphere
+// rim, and the aurora band.
+function drawGlow(
+  ctx: CanvasRenderingContext2D,
+  cx: number,
+  cy: number,
+  radius: number,
+  color: string,
+  peakAlpha: number,
+): void {
+  if (peakAlpha <= 0 || radius <= 0) return
+  ctx.save()
+  ctx.globalCompositeOperation = 'lighter'
+  const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, radius)
+  grad.addColorStop(0, `rgba(${color}, ${peakAlpha})`)
+  grad.addColorStop(0.5, `rgba(${color}, ${peakAlpha * 0.35})`)
+  grad.addColorStop(1, `rgba(${color}, 0)`)
+  ctx.fillStyle = grad
+  ctx.beginPath()
+  ctx.arc(cx, cy, radius, 0, Math.PI * 2)
+  ctx.fill()
+  ctx.restore()
+}
+
+const SUN_GLOW_COLOR: Record<FlareTier, string> = {
+  quiet: '255, 214, 120',
+  small: '255, 178, 90',
+  strong: '255, 140, 60',
+  extreme: '255, 90, 60',
+}
+
+const AURORA_GLOW_COLOR: Record<KpTier, string | null> = {
+  calm: null,
+  unsettled: '60, 180, 130',
+  storm: '70, 210, 170',
+  severe: '160, 230, 190',
+}
+
+// Indexed by Severity (0-3) — same "worst of all feeds" ranking that picks
+// the mascot's body color/expression, so the glow always matches its mood.
+const MASCOT_GLOW_COLOR = [
+  '120, 210, 170',
+  '230, 205, 90',
+  '235, 145, 70',
+  '235, 80, 80',
+] as const
+
 // `elapsedMs` drives the idle breathing/twinkle animation (Chunk 7): a slow
 // sinusoidal pulse on the sun's scale and the aurora's opacity. Passing 0
 // (the default) reproduces the static Chunk 6 render.
@@ -314,10 +350,14 @@ export function drawScene(
   const layout = computeLayout(width, height)
 
   const skyProgress = effects ? transitionProgress(effects.sky, elapsedMs) : 1
-  if (skyProgress < 1) {
-    tileFrame(ctx, sheet, skyFrame(effects!.sky.prevValue), layout.sky, layout.skyTile)
-  }
-  tileFrameAlpha(ctx, sheet, skyFrame(tiers.kp), layout.sky, layout.skyTile, skyProgress)
+  drawNightSky(
+    ctx,
+    layout.sky,
+    tiers.kp,
+    effects ? effects.sky.prevValue : tiers.kp,
+    skyProgress,
+    elapsedMs,
+  )
 
   const sunProgress = effects ? transitionProgress(effects.sun, elapsedMs) : 1
   const sunPulse = 1 + 0.025 * Math.sin(elapsedMs / 900)
@@ -328,11 +368,29 @@ export function drawScene(
     x: sunRect.x + flarePop.shakeX,
     y: sunRect.y + flarePop.shakeY,
   }
+  const sunGlowCx = shakenSunRect.x + shakenSunRect.w / 2
+  const sunGlowCy = shakenSunRect.y + shakenSunRect.h / 2
+  drawGlow(
+    ctx,
+    sunGlowCx,
+    sunGlowCy,
+    shakenSunRect.w * (1.5 + flarePop.scaleBoost * 1.8),
+    SUN_GLOW_COLOR[tiers.flare],
+    0.5 + flarePop.scaleBoost * 1.2,
+  )
   if (sunProgress < 1) {
     drawFrame(ctx, sheet, sunFrame(effects!.sun.prevValue), shakenSunRect)
   }
   drawFrameAlpha(ctx, sheet, sunFrame(tiers.flare), shakenSunRect, sunProgress)
 
+  drawGlow(
+    ctx,
+    layout.earth.x + layout.earth.w / 2,
+    layout.earth.y + layout.earth.h / 2,
+    layout.earth.w * 0.62,
+    '90, 170, 255',
+    0.3,
+  )
   drawFrame(ctx, sheet, 'earth', layout.earth)
   drawMagnetosphereEffect(ctx, layout.earth, tiers.bz, elapsedMs)
 
@@ -341,10 +399,16 @@ export function drawScene(
   // Idle bob, same idea as the sun's breathing pulse (Chunk 7) — a bit of
   // motion so the mascot reads as alive rather than a static sticker.
   const mascotBob = Math.sin(elapsedMs / 700) * layout.mascot.h * 0.06
-  drawFrame(ctx, sheet, mascotFrame(tiers), {
-    ...layout.mascot,
-    y: layout.mascot.y + mascotBob,
-  })
+  const mascotRect: Rect = { ...layout.mascot, y: layout.mascot.y + mascotBob }
+  drawGlow(
+    ctx,
+    mascotRect.x + mascotRect.w / 2,
+    mascotRect.y + mascotRect.h * 0.15,
+    mascotRect.w * 0.7,
+    MASCOT_GLOW_COLOR[overallSeverity(tiers)],
+    0.35,
+  )
+  drawFrame(ctx, sheet, mascotFrame(tiers), mascotRect)
 
   drawKpTrend(ctx, layout.kpTrend, kpHistory)
 
@@ -352,6 +416,17 @@ export function drawScene(
   const twinkle = 0.75 + 0.25 * Math.sin(elapsedMs / 620)
   const prevAurora = effects && auroraProgress < 1 ? auroraFrame(effects.aurora.prevValue) : null
   const currAurora = auroraFrame(tiers.kp)
+  const auroraGlowColor = AURORA_GLOW_COLOR[tiers.kp]
+  if (auroraGlowColor) {
+    drawGlow(
+      ctx,
+      layout.aurora.x + layout.aurora.w / 2,
+      layout.aurora.y + layout.aurora.h / 2,
+      layout.aurora.w * 0.55,
+      auroraGlowColor,
+      0.4 * auroraProgress * twinkle,
+    )
+  }
   if (prevAurora) {
     tileFrameAlpha(ctx, sheet, prevAurora, layout.aurora, layout.auroraTile, (1 - auroraProgress) * twinkle)
   }

@@ -1,4 +1,5 @@
 import { AlertBanner } from './components/AlertBanner.tsx'
+import { EnlilPanel } from './components/EnlilPanel.tsx'
 import { Hud } from './components/Hud.tsx'
 import { NotificationToggle } from './components/NotificationToggle.tsx'
 import { SoundToggle } from './components/SoundToggle.tsx'
@@ -50,6 +51,8 @@ function App() {
         <Scene tiers={tiers} kpHistory={state.kpHistory.data ?? undefined} />
         <Hud state={state} />
       </div>
+
+      <EnlilPanel frames={state.enlil.data} error={state.enlil.error} />
     </div>
   )
 }

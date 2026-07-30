@@ -48,7 +48,9 @@ export interface SpaceWeatherState {
   solarRegions: Slice<SolarRegion[]>
   ovationAurora: Slice<OvationAurora>
   alerts: Slice<SpaceWeatherAlert[]>
-  enlil: Slice<EnlilFrame>
+  // The last ~day's worth of frames (oldest to newest), not just the
+  // latest — EnlilPanel plays them as a looping animation.
+  enlil: Slice<EnlilFrame[]>
 }
 
 const initialState: SpaceWeatherState = {
@@ -178,9 +180,8 @@ async function loadAlerts(): Promise<SpaceWeatherState['alerts']> {
 async function loadEnlil(): Promise<SpaceWeatherState['enlil']> {
   try {
     const frames = await fetchEnlilAnimation()
-    const latest = frames.at(-1)
-    if (!latest) throw new Error('no ENLIL frames returned')
-    return { data: latest, error: null }
+    if (frames.length === 0) throw new Error('no ENLIL frames returned')
+    return { data: frames, error: null }
   } catch (err) {
     return { data: null, error: errorMessage(err) }
   }

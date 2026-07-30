@@ -1,58 +1,84 @@
-// ENLIL model readout (Chunk 9, Plan.md §9a / §5). Docked directly over the
-// scene canvas, wired up to the `radar-dish` ground prop drawn in
-// `src/scene/draw.ts` via the shared `DISH_RECT_FRACTIONS` — visually it
-// reads as the dish's own screen/readout rather than a separate floating
-// panel, per the resolved art-direction note in Plan.md §5/§10.
+// ENLIL model viewer. Originally docked as a small overlay over the scene
+// canvas (Chunk 9, Plan.md §9a/§5) so it read as the radar dish's own
+// readout screen — legible at desktop size, but the same fixed panel
+// fraction shrank to near-unreadable on phone widths. Promoted to its own
+// full-width featured section instead (still the same pixel-console
+// styling, just given real room to breathe), and upgraded from a single
+// static frame to a real animation: NOAA's enlil.json is an animation reel
+// of ~169 frames, and scripts/fetch-noaa-snapshot.mjs now mirrors the most
+// recent ENLIL_FRAME_COUNT of them, which this component cycles through.
 
-import { DISH_RECT_FRACTIONS } from '../scene/draw.ts'
-import { useSpaceWeather } from '../data/useSpaceWeather.ts'
+import { useEffect, useState } from 'react'
+import type { EnlilFrame } from '../data/types.ts'
 
-// Real NOAA ENLIL frames are ~1.6:1 (960x600). The panel is taller than
-// that (h relative to w) so `object-contain` letterboxes rather than
-// `object-cover` cropping most of the frame away — a wide-short box with
-// `cover` was chopping the image down to an unrecognizable sliver.
-const PANEL_FRACTIONS = {
-  x: DISH_RECT_FRACTIONS.x,
-  y: DISH_RECT_FRACTIONS.y - 0.3,
-  w: DISH_RECT_FRACTIONS.w + 0.2,
-  h: 0.3,
+const FRAME_INTERVAL_MS = 350
+
+function frameSrc(frame: EnlilFrame): string {
+  const base = import.meta.env.BASE_URL.replace(/\/$/, '')
+  return `${base}${frame.imageUrl}?t=${encodeURIComponent(frame.time)}`
 }
 
-export function EnlilPanel() {
-  const state = useSpaceWeather()
-  const { data, error } = state.enlil
+export function EnlilPanel({
+  frames,
+  error,
+}: {
+  frames: EnlilFrame[] | null
+  error: string | null
+}) {
+  const [index, setIndex] = useState(0)
+
+  useEffect(() => {
+    if (!frames || frames.length === 0) return
+    // Warm the browser cache for every frame up front so the loop plays
+    // smoothly from the first pass instead of stalling on each frame's
+    // first-ever load.
+    for (const frame of frames) {
+      const img = new Image()
+      img.src = frameSrc(frame)
+    }
+  }, [frames])
+
+  useEffect(() => {
+    setIndex(0)
+    if (!frames || frames.length < 2) return
+    const id = setInterval(() => {
+      setIndex((i) => (i + 1) % frames.length)
+    }, FRAME_INTERVAL_MS)
+    return () => clearInterval(id)
+  }, [frames])
+
+  const current = frames?.[index] ?? null
 
   return (
-    <div
-      className="absolute flex flex-col border-2 border-slate-700 bg-slate-950/90 p-1 font-mono shadow-[3px_3px_0_0_rgba(0,0,0,0.5)]"
-      style={{
-        left: `${PANEL_FRACTIONS.x * 100}%`,
-        top: `${PANEL_FRACTIONS.y * 100}%`,
-        width: `${PANEL_FRACTIONS.w * 100}%`,
-        height: `${PANEL_FRACTIONS.h * 100}%`,
-      }}
-    >
-      <div className="mb-1 shrink-0 text-[0.7rem] uppercase tracking-[0.15em] text-cyan-400">
-        Enlil Model Feed
+    <section className="w-full max-w-2xl border-2 border-slate-700 bg-slate-900/60 font-mono shadow-[4px_4px_0_0_rgba(0,0,0,0.5)]">
+      <div className="flex items-center justify-between border-b-2 border-slate-700 bg-slate-950/80 px-3 py-2">
+        <span className="text-sm uppercase tracking-[0.2em] text-cyan-400">
+          WSA-Enlil Solar Wind Model
+        </span>
+        {frames && frames.length > 1 && (
+          <span className="text-xs text-slate-500">
+            frame {index + 1}/{frames.length}
+          </span>
+        )}
       </div>
-      <div className="relative min-h-0 flex-1 overflow-hidden bg-slate-900">
+      <div className="relative aspect-[8/5] w-full overflow-hidden bg-slate-950">
         {error ? (
-          <div className="flex h-full items-center justify-center p-1 text-center text-[0.7rem] text-rose-400">
+          <div className="flex h-full items-center justify-center text-sm text-rose-400">
             signal lost
           </div>
-        ) : data ? (
+        ) : current ? (
           <img
-            src={`${import.meta.env.BASE_URL.replace(/\/$/, '')}${data.imageUrl}?t=${encodeURIComponent(data.time)}`}
-            alt="Latest WSA-Enlil solar wind model frame"
+            src={frameSrc(current)}
+            alt="WSA-Enlil solar wind model animation frame"
             className="h-full w-full object-contain"
             style={{ imageRendering: 'pixelated' }}
           />
         ) : (
-          <div className="flex h-full items-center justify-center text-[0.7rem] text-slate-500">
+          <div className="flex h-full items-center justify-center text-sm text-slate-500">
             acquiring…
           </div>
         )}
       </div>
-    </div>
+    </section>
   )
 }

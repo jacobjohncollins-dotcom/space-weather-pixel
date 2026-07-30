@@ -19,7 +19,7 @@ const LOGICAL = 16
 const SCALE = 2
 const CELL = LOGICAL * SCALE
 const COLUMNS = 4
-const ROWS = 5
+const ROWS = 4
 const SHEET_W = CELL * COLUMNS
 const SHEET_H = CELL * ROWS
 
@@ -90,7 +90,10 @@ function drawEarth() {
 }
 
 function drawAurora(intensity) {
-  const g = makeGrid(hex(8, 10, 24))
+  // Transparent backdrop, not opaque — this tiles over the procedural night
+  // sky (starfield.ts) now, so a solid fill would punch a visible rectangle
+  // out of the gradient/nebula/stars behind it instead of blending in.
+  const g = makeGrid(null)
   const bands =
     intensity === 'faint'
       ? [hex(40, 120, 90, 140)]
@@ -224,24 +227,6 @@ function drawMascot(mood) {
   return g
 }
 
-function drawSky(stormLevel) {
-  const palettes = {
-    quiet: { bg: hex(10, 12, 40), star: hex(220, 220, 255), density: 10 },
-    active: { bg: hex(20, 14, 55), star: hex(230, 220, 255), density: 16 },
-    storm: { bg: hex(45, 12, 60), star: hex(255, 210, 240), density: 22 },
-    severe: { bg: hex(70, 14, 30), star: hex(255, 200, 160), density: 30 },
-  }
-  const { bg, star, density } = palettes[stormLevel]
-  const g = makeGrid(bg)
-  for (let i = 0; i < density; i++) {
-    // deterministic pseudo-random star placement so output is stable
-    const x = (i * 37 + stormLevel.length * 5) % LOGICAL
-    const y = (i * 53 + stormLevel.length * 11) % LOGICAL
-    g[y][x] = star
-  }
-  return g
-}
-
 // --- sheet layout ----------------------------------------------------------
 
 const FRAMES = [
@@ -255,17 +240,12 @@ const FRAMES = [
   { name: 'aurora-moderate', row: 1, col: 2, grid: drawAurora('moderate') },
   { name: 'aurora-strong', row: 1, col: 3, grid: drawAurora('strong') },
 
-  { name: 'sky-quiet', row: 2, col: 0, grid: drawSky('quiet') },
-  { name: 'sky-active', row: 2, col: 1, grid: drawSky('active') },
-  { name: 'sky-storm', row: 2, col: 2, grid: drawSky('storm') },
-  { name: 'sky-severe', row: 2, col: 3, grid: drawSky('severe') },
+  { name: 'radar-dish', row: 2, col: 0, grid: drawDish() },
 
-  { name: 'radar-dish', row: 3, col: 0, grid: drawDish() },
-
-  { name: 'mascot-calm', row: 4, col: 0, grid: drawMascot('calm') },
-  { name: 'mascot-unsettled', row: 4, col: 1, grid: drawMascot('unsettled') },
-  { name: 'mascot-storm', row: 4, col: 2, grid: drawMascot('storm') },
-  { name: 'mascot-severe', row: 4, col: 3, grid: drawMascot('severe') },
+  { name: 'mascot-calm', row: 3, col: 0, grid: drawMascot('calm') },
+  { name: 'mascot-unsettled', row: 3, col: 1, grid: drawMascot('unsettled') },
+  { name: 'mascot-storm', row: 3, col: 2, grid: drawMascot('storm') },
+  { name: 'mascot-severe', row: 3, col: 3, grid: drawMascot('severe') },
 ]
 
 const png = new PNG({ width: SHEET_W, height: SHEET_H })

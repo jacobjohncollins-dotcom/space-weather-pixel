@@ -15,7 +15,6 @@ import type { WindField } from './wind.ts'
 import { createSkyEventsState, drawSkyEvents, stepSkyEvents } from './skyEvents.ts'
 import type { SkyEventsState } from './skyEvents.ts'
 import type { BzTier, FlareTier, KpTier, WindTier } from '../data/thresholds.ts'
-import { EnlilPanel } from '../components/EnlilPanel.tsx'
 import { SourcesPanel } from '../components/SourcesPanel.tsx'
 import { usePrefersReducedMotion } from '../hooks/usePrefersReducedMotion.ts'
 import { soundEngine } from './sound.ts'
@@ -200,7 +199,6 @@ export function Scene({ tiers, kpHistory = EMPTY_KP_HISTORY }: SceneProps) {
           className="h-full w-full border-2 border-slate-700 bg-slate-950"
           style={{ imageRendering: 'pixelated' }}
         />
-        <EnlilPanel />
         <SourcesPanel />
       </div>
       {import.meta.env.DEV && tiers === undefined && (
