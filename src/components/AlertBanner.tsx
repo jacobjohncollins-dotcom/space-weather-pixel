@@ -7,6 +7,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { latestAlert } from './alertSelection.ts'
 import { soundEngine } from '../scene/sound.ts'
+import { notificationEngine } from '../scene/notifications.ts'
 import type { SpaceWeatherAlert } from '../data/types.ts'
 
 export function AlertBanner({
@@ -16,15 +17,17 @@ export function AlertBanner({
 }) {
   const [dismissedId, setDismissedId] = useState<string | null>(null)
   const alert = latestAlert(alerts)
-  // Tracks the last alert a chime already played for, so re-renders from
-  // unrelated polls (or the same alert persisting across polls) don't
-  // replay the chime — only a genuinely new productId does (Chunk 12).
-  const chimedForId = useRef<string | null>(null)
+  // Tracks the last alert a chime/notification already fired for, so
+  // re-renders from unrelated polls (or the same alert persisting across
+  // polls) don't replay them — only a genuinely new productId does
+  // (Chunk 12 sound, Chunk 14 notifications).
+  const notifiedForId = useRef<string | null>(null)
 
   useEffect(() => {
-    if (alert && alert.productId !== chimedForId.current) {
-      chimedForId.current = alert.productId
+    if (alert && alert.productId !== notifiedForId.current) {
+      notifiedForId.current = alert.productId
       soundEngine.playStormAlert()
+      notificationEngine.notifyStormAlert(alert.message.split('\n')[0])
     }
   }, [alert])
 

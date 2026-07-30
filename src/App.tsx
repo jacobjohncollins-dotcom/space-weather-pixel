@@ -1,5 +1,6 @@
 import { AlertBanner } from './components/AlertBanner.tsx'
 import { Hud } from './components/Hud.tsx'
+import { NotificationToggle } from './components/NotificationToggle.tsx'
 import { SoundToggle } from './components/SoundToggle.tsx'
 import { Scene } from './scene/Scene.tsx'
 import { useSpaceWeather } from './data/useSpaceWeather.ts'
@@ -29,7 +30,8 @@ function App() {
 
   return (
     <div className="flex min-h-svh flex-col items-center gap-4 bg-slate-950 p-4 text-slate-100">
-      <div className="flex w-full max-w-5xl justify-end">
+      <div className="flex w-full max-w-5xl justify-end gap-2">
+        <NotificationToggle />
         <SoundToggle />
       </div>
 
