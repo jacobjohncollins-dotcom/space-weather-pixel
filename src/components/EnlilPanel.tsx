@@ -8,11 +8,15 @@ import { DISH_RECT_FRACTIONS } from '../scene/draw.ts'
 import { NOAA_BASE_URL } from '../data/noaa.ts'
 import { useSpaceWeather } from '../data/useSpaceWeather.ts'
 
+// Real NOAA ENLIL frames are ~1.6:1 (960x600). The panel is taller than
+// that (h relative to w) so `object-contain` letterboxes rather than
+// `object-cover` cropping most of the frame away — a wide-short box with
+// `cover` was chopping the image down to an unrecognizable sliver.
 const PANEL_FRACTIONS = {
   x: DISH_RECT_FRACTIONS.x,
-  y: DISH_RECT_FRACTIONS.y - 0.24,
+  y: DISH_RECT_FRACTIONS.y - 0.3,
   w: DISH_RECT_FRACTIONS.w + 0.2,
-  h: 0.24,
+  h: 0.3,
 }
 
 export function EnlilPanel() {
@@ -29,23 +33,23 @@ export function EnlilPanel() {
         height: `${PANEL_FRACTIONS.h * 100}%`,
       }}
     >
-      <div className="mb-1 shrink-0 text-[0.5rem] uppercase tracking-[0.15em] text-cyan-400">
+      <div className="mb-1 shrink-0 text-[0.7rem] uppercase tracking-[0.15em] text-cyan-400">
         Enlil Model Feed
       </div>
       <div className="relative min-h-0 flex-1 overflow-hidden bg-slate-900">
         {error ? (
-          <div className="flex h-full items-center justify-center p-1 text-center text-[0.5rem] text-rose-400">
+          <div className="flex h-full items-center justify-center p-1 text-center text-[0.7rem] text-rose-400">
             signal lost
           </div>
         ) : data ? (
           <img
             src={`${NOAA_BASE_URL}${data.imageUrl}`}
             alt="Latest WSA-Enlil solar wind model frame"
-            className="h-full w-full object-cover"
+            className="h-full w-full object-contain"
             style={{ imageRendering: 'pixelated' }}
           />
         ) : (
-          <div className="flex h-full items-center justify-center text-[0.5rem] text-slate-500">
+          <div className="flex h-full items-center justify-center text-[0.7rem] text-slate-500">
             acquiring…
           </div>
         )}

@@ -39,7 +39,7 @@ function App() {
         <h1 className="font-mono text-lg uppercase tracking-[0.3em] text-slate-200">
           Space Weather Pixel Dashboard
         </h1>
-        <p className="mt-1 font-mono text-xs uppercase tracking-widest text-cyan-400">
+        <p className="mt-1 font-mono text-sm uppercase tracking-widest text-cyan-400">
           {statusLabel}
         </p>
       </header>

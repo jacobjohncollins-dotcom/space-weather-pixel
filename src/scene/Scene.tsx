@@ -12,6 +12,8 @@ import { createEffectsState, updateEffects } from './effects.ts'
 import type { EffectsState } from './effects.ts'
 import { createWindField, drawWindField, stepWindField } from './wind.ts'
 import type { WindField } from './wind.ts'
+import { createSkyEventsState, drawSkyEvents, stepSkyEvents } from './skyEvents.ts'
+import type { SkyEventsState } from './skyEvents.ts'
 import type { BzTier, FlareTier, KpTier, WindTier } from '../data/thresholds.ts'
 import { EnlilPanel } from '../components/EnlilPanel.tsx'
 import { SourcesPanel } from '../components/SourcesPanel.tsx'
@@ -128,6 +130,7 @@ export function Scene({ tiers, kpHistory = EMPTY_KP_HISTORY }: SceneProps) {
     }
 
     let windField: WindField | null = null
+    const skyEvents: SkyEventsState = createSkyEventsState()
 
     // Arm crossfade/pop timers against whatever was showing before this
     // effect run (a fresh mount, or the last committed tier state).
@@ -167,9 +170,12 @@ export function Scene({ tiers, kpHistory = EMPTY_KP_HISTORY }: SceneProps) {
       lastTime = time
 
       if (windField) {
+        const elapsedMs = time - startTime
         stepWindField(windField, dtSeconds, width, height)
-        drawScene(ctx!, sheet, width, height, activeTiers, time - startTime, effectsState, kpHistory)
+        stepSkyEvents(skyEvents, elapsedMs, dtSeconds, width, height)
+        drawScene(ctx!, sheet, width, height, activeTiers, elapsedMs, effectsState, kpHistory)
         drawWindField(ctx!, windField)
+        drawSkyEvents(ctx!, skyEvents, width)
       }
 
       rafId = requestAnimationFrame(frame)

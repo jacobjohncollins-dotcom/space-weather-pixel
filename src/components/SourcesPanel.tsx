@@ -11,12 +11,12 @@ const LINKS = [
   { label: 'NOAA Aurora Forecast', href: 'https://www.swpc.noaa.gov/products/aurora-30-minute-forecast' },
 ]
 
-const PANEL_FRACTIONS = { x: 0.62, y: 0.7, w: 0.35, h: 0.28 }
+const PANEL_FRACTIONS = { x: 0.62, y: 0.68, w: 0.35, h: 0.3 }
 
 export function SourcesPanel() {
   return (
     <div
-      className="absolute flex flex-col border-2 border-slate-700 bg-slate-950/90 p-1.5 font-mono shadow-[3px_3px_0_0_rgba(0,0,0,0.5)]"
+      className="absolute flex flex-col border-2 border-slate-700 bg-slate-950/90 p-0.5 font-mono shadow-[3px_3px_0_0_rgba(0,0,0,0.5)]"
       style={{
         left: `${PANEL_FRACTIONS.x * 100}%`,
         top: `${PANEL_FRACTIONS.y * 100}%`,
@@ -24,17 +24,17 @@ export function SourcesPanel() {
         height: `${PANEL_FRACTIONS.h * 100}%`,
       }}
     >
-      <div className="mb-1 shrink-0 text-[0.5rem] uppercase tracking-[0.15em] text-cyan-400">
+      <div className="shrink-0 text-[0.7rem] uppercase tracking-[0.15em] text-cyan-400">
         Go Deeper
       </div>
-      <ul className="flex min-h-0 flex-1 flex-col justify-center gap-0.5">
+      <ul className="flex min-h-0 flex-1 flex-col justify-center gap-0">
         {LINKS.map((link) => (
-          <li key={link.href} className="truncate text-[0.5rem] leading-tight">
+          <li key={link.href} className="min-w-0 text-[0.7rem] leading-none">
             <a
               href={link.href}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-slate-300 hover:text-cyan-300"
+              className="block truncate text-slate-300 hover:text-cyan-300"
             >
               &gt; {link.label}
             </a>

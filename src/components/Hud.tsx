@@ -84,7 +84,7 @@ function Readout({
       <>
         <span className="text-slate-100">{value}</span>
         {tier ? (
-          <span className="ml-2 text-xs uppercase tracking-wider text-cyan-400">
+          <span className="ml-2 text-sm uppercase tracking-wider text-cyan-400">
             {tierLabel(tier)}
           </span>
         ) : null}
@@ -93,11 +93,11 @@ function Readout({
   }
 
   return (
-    <div className="flex items-baseline justify-between border-b border-slate-800 py-1 last:border-b-0">
-      <span className="text-xs uppercase tracking-widest text-slate-500">
+    <div className="flex items-baseline justify-between border-b border-slate-800 py-1.5 last:border-b-0">
+      <span className="text-sm uppercase tracking-widest text-slate-500">
         {label}
       </span>
-      <span className="font-mono text-sm">{content}</span>
+      <span className="font-mono text-base">{content}</span>
     </div>
   )
 }
@@ -108,7 +108,7 @@ export function Hud({ state }: { state: SpaceWeatherState }) {
       <p className="sr-only" aria-live="polite">
         {srSummary(state)}
       </p>
-      <div className="mb-2 text-xs uppercase tracking-[0.2em] text-slate-400">
+      <div className="mb-2 text-sm uppercase tracking-[0.2em] text-slate-400">
         Space Weather Status
       </div>
 
