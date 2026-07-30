@@ -1,0 +1,35 @@
+[
+  {
+    "time_tag": "2024-05-10T00:00:00",
+    "active": true,
+    "source": "SOLAR1",
+    "bx_gsm": 1.2,
+    "by_gsm": -3.4,
+    "bz_gsm": -12.6,
+    "phi_gsm": 290.1,
+    "theta_gsm": -15.2,
+    "bt": 13.5
+  },
+  {
+    "time_tag": "2024-05-10T00:00:00",
+    "active": false,
+    "source": "ACE",
+    "bx_gsm": 1.0,
+    "by_gsm": -3.0,
+    "bz_gsm": -12.0,
+    "phi_gsm": 289.0,
+    "theta_gsm": -15.0,
+    "bt": 13.0
+  },
+  {
+    "time_tag": "2024-05-10T00:01:00",
+    "active": true,
+    "source": "SOLAR1",
+    "bx_gsm": null,
+    "by_gsm": null,
+    "bz_gsm": null,
+    "phi_gsm": null,
+    "theta_gsm": null,
+    "bt": null
+  }
+]

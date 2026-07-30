@@ -22,8 +22,8 @@ import {
 } from './noaa.ts'
 
 import kIndexFixture from './__fixtures__/planetary-k-index.json'
-import plasmaFixture from './__fixtures__/plasma-7-day.json'
-import magFixture from './__fixtures__/mag-7-day.json'
+import plasmaFixture from './__fixtures__/solar-wind-speed.json'
+import magFixture from './__fixtures__/solar-wind-mag-field.json'
 import xrayFluxFixture from './__fixtures__/xrays-6-hour.json'
 import xrayFlaresFixture from './__fixtures__/xray-flares-latest.json'
 import solarRegionsFixture from './__fixtures__/solar-regions.json'
@@ -32,11 +32,11 @@ import alertsFixture from './__fixtures__/alerts.json'
 import enlilFixture from './__fixtures__/enlil.json'
 
 describe('parse functions', () => {
-  it('parses planetary K-index table rows', () => {
+  it('parses planetary K-index entries', () => {
     const readings = parsePlanetaryKIndex(kIndexFixture)
     expect(readings).toHaveLength(3)
     expect(readings[0]).toEqual({
-      timeTag: '2024-05-10 00:00:00.000',
+      timeTag: '2024-05-10T00:00:00',
       kp: 2.67,
       aRunning: 7,
       stationCount: 6,
@@ -44,28 +44,28 @@ describe('parse functions', () => {
     expect(readings[2].kp).toBe(8)
   })
 
-  it('parses solar wind plasma table rows, mapping "null" to null', () => {
+  it('parses solar wind plasma entries, keeping only the active source', () => {
     const readings = parseSolarWindPlasma(plasmaFixture)
     expect(readings).toHaveLength(2)
     expect(readings[0]).toEqual({
-      timeTag: '2024-05-10 00:00:00.000',
+      timeTag: '2024-05-10T00:00:00',
       density: 3.51,
       speed: 412.3,
       temperature: 94500,
     })
     expect(readings[1]).toEqual({
-      timeTag: '2024-05-10 00:01:00.000',
+      timeTag: '2024-05-10T00:01:00',
       density: null,
       speed: null,
       temperature: null,
     })
   })
 
-  it('parses solar wind mag table rows, mapping "null" to null', () => {
+  it('parses solar wind mag entries, keeping only the active source', () => {
     const readings = parseSolarWindMag(magFixture)
     expect(readings).toHaveLength(2)
     expect(readings[0]).toEqual({
-      timeTag: '2024-05-10 00:00:00.000',
+      timeTag: '2024-05-10T00:00:00',
       bx: 1.2,
       by: -3.4,
       bz: -12.6,
@@ -146,18 +146,16 @@ describe('parse functions', () => {
     ])
   })
 
-  it('returns an empty array for a table feed with only a header row', () => {
-    expect(
-      parsePlanetaryKIndex([['time_tag', 'Kp', 'a_running', 'station_count']]),
-    ).toEqual([])
+  it('returns an empty array for an empty feed', () => {
+    expect(parsePlanetaryKIndex([])).toEqual([])
   })
 })
 
 describe('fetch wrappers', () => {
   const fixtures: Record<string, unknown> = {
     '/products/noaa-planetary-k-index.json': kIndexFixture,
-    '/products/solar-wind/plasma-7-day.json': plasmaFixture,
-    '/products/solar-wind/mag-7-day.json': magFixture,
+    '/json/rtsw/rtsw_wind_1m.json': plasmaFixture,
+    '/json/rtsw/rtsw_mag_1m.json': magFixture,
     '/json/goes/primary/xrays-6-hour.json': xrayFluxFixture,
     '/json/goes/primary/xray-flares-latest.json': xrayFlaresFixture,
     '/json/solar_regions.json': solarRegionsFixture,

@@ -23,10 +23,14 @@ import type {
 
 export const NOAA_BASE_URL = 'https://services.swpc.noaa.gov'
 
+// solarWindPlasma/solarWindMag originally pointed at
+// products/solar-wind/plasma-7-day.json and mag-7-day.json per Plan.md §3 —
+// those don't exist on the live server (404). The working real-time
+// equivalents are the combined DSCOVR/ACE "rtsw" feeds below.
 const FEED_PATHS = {
   planetaryKIndex: '/products/noaa-planetary-k-index.json',
-  solarWindPlasma: '/products/solar-wind/plasma-7-day.json',
-  solarWindMag: '/products/solar-wind/mag-7-day.json',
+  solarWindPlasma: '/json/rtsw/rtsw_wind_1m.json',
+  solarWindMag: '/json/rtsw/rtsw_mag_1m.json',
   xrayFlux: '/json/goes/primary/xrays-6-hour.json',
   xrayFlares: '/json/goes/primary/xray-flares-latest.json',
   solarRegions: '/json/solar_regions.json',
@@ -43,49 +47,68 @@ async function fetchJson(path: string): Promise<unknown> {
   return response.json()
 }
 
-function toNumberOrNull(value: string | undefined): number | null {
-  if (value === undefined || value === null || value === 'null') return null
-  const parsed = Number(value)
-  return Number.isNaN(parsed) ? null : parsed
-}
-
-/** Rows of a NOAA "table" feed: [header, ...dataRows]. */
-type TableFeed = [string[], ...string[][]] | string[][]
-
-function tableRows(raw: unknown): string[][] {
-  if (!Array.isArray(raw) || raw.length === 0) return []
-  const [, ...rows] = raw as TableFeed
-  return rows
+interface RawKIndexEntry {
+  time_tag: string
+  Kp: number
+  a_running: number
+  station_count: number
 }
 
 export function parsePlanetaryKIndex(raw: unknown): KIndexReading[] {
-  return tableRows(raw).map((row) => ({
-    timeTag: row[0],
-    kp: Number(row[1]),
-    aRunning: Number(row[2]),
-    stationCount: Number(row[3]),
+  return ((raw ?? []) as RawKIndexEntry[]).map((entry) => ({
+    timeTag: entry.time_tag,
+    kp: entry.Kp,
+    aRunning: entry.a_running,
+    stationCount: entry.station_count,
   }))
+}
+
+// NOAA's real-time solar wind feeds (json/rtsw/*) report one entry per
+// timestamp per source satellite (e.g. SOLAR1, ACE); only the entry NOAA
+// flags `active: true` is operationally in use, so non-active entries are
+// dropped here rather than left for callers to filter.
+interface RawSolarWindPlasmaEntry {
+  time_tag: string
+  active: boolean
+  proton_density: number | null
+  proton_speed: number | null
+  proton_temperature: number | null
 }
 
 export function parseSolarWindPlasma(raw: unknown): SolarWindPlasmaReading[] {
-  return tableRows(raw).map((row) => ({
-    timeTag: row[0],
-    density: toNumberOrNull(row[1]),
-    speed: toNumberOrNull(row[2]),
-    temperature: toNumberOrNull(row[3]),
-  }))
+  return ((raw ?? []) as RawSolarWindPlasmaEntry[])
+    .filter((entry) => entry.active)
+    .map((entry) => ({
+      timeTag: entry.time_tag,
+      density: entry.proton_density,
+      speed: entry.proton_speed,
+      temperature: entry.proton_temperature,
+    }))
+}
+
+interface RawSolarWindMagEntry {
+  time_tag: string
+  active: boolean
+  bx_gsm: number | null
+  by_gsm: number | null
+  bz_gsm: number | null
+  phi_gsm: number | null
+  theta_gsm: number | null
+  bt: number | null
 }
 
 export function parseSolarWindMag(raw: unknown): SolarWindMagReading[] {
-  return tableRows(raw).map((row) => ({
-    timeTag: row[0],
-    bx: toNumberOrNull(row[1]),
-    by: toNumberOrNull(row[2]),
-    bz: toNumberOrNull(row[3]),
-    lon: toNumberOrNull(row[4]),
-    lat: toNumberOrNull(row[5]),
-    bt: toNumberOrNull(row[6]),
-  }))
+  return ((raw ?? []) as RawSolarWindMagEntry[])
+    .filter((entry) => entry.active)
+    .map((entry) => ({
+      timeTag: entry.time_tag,
+      bx: entry.bx_gsm,
+      by: entry.by_gsm,
+      bz: entry.bz_gsm,
+      lon: entry.phi_gsm,
+      lat: entry.theta_gsm,
+      bt: entry.bt,
+    }))
 }
 
 interface RawXrayFluxEntry {

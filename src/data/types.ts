@@ -11,6 +11,12 @@ export interface KIndexReading {
   stationCount: number
 }
 
+// The 7-day multi-field table feeds originally assumed in Plan.md §3
+// (products/solar-wind/plasma-7-day.json, mag-7-day.json) don't exist on the
+// live NOAA server. The real-time equivalents are the combined DSCOVR/ACE
+// "rtsw" object-list feeds (json/rtsw/rtsw_wind_1m.json, rtsw_mag_1m.json),
+// which report one entry per source satellite per timestamp (only the
+// `active: true` entry is in operational use).
 export interface SolarWindPlasmaReading {
   timeTag: string
   density: number | null

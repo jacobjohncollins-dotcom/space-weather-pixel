@@ -1,0 +1,26 @@
+[
+  {
+    "time_tag": "2024-05-10T00:00:00",
+    "active": true,
+    "source": "SOLAR1",
+    "proton_density": 3.51,
+    "proton_speed": 412.3,
+    "proton_temperature": 94500.0
+  },
+  {
+    "time_tag": "2024-05-10T00:00:00",
+    "active": false,
+    "source": "ACE",
+    "proton_density": 3.6,
+    "proton_speed": 410.1,
+    "proton_temperature": 93000.0
+  },
+  {
+    "time_tag": "2024-05-10T00:01:00",
+    "active": true,
+    "source": "SOLAR1",
+    "proton_density": null,
+    "proton_speed": null,
+    "proton_temperature": null
+  }
+]
