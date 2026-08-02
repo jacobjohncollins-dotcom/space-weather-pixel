@@ -5,13 +5,16 @@
 // full-width featured section instead (still the same pixel-console
 // styling, just given real room to breathe), and upgraded from a single
 // static frame to a real animation: NOAA's enlil.json is an animation reel
-// of ~169 frames, and scripts/fetch-noaa-snapshot.mjs now mirrors the most
-// recent ENLIL_FRAME_COUNT of them, which this component cycles through.
+// of the full history it returns (~169 frames), and
+// scripts/fetch-noaa-snapshot.mjs mirrors every frame, which this component
+// cycles through.
 
 import { useEffect, useState } from 'react'
 import type { EnlilFrame } from '../data/types.ts'
 
-const FRAME_INTERVAL_MS = 350
+// ~169 frames at 90ms is a ~15s loop — fast enough to read as a real
+// time-lapse of the model rather than a slow slideshow.
+const FRAME_INTERVAL_MS = 90
 
 function frameSrc(frame: EnlilFrame): string {
   const base = import.meta.env.BASE_URL.replace(/\/$/, '')

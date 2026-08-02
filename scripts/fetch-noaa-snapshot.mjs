@@ -30,21 +30,31 @@ async function fetchFeed(remote) {
   return response.json()
 }
 
-// NOAA's enlil.json is really an animation reel (~169 frames spanning
-// several days at roughly hourly cadence) — EnlilPanel plays the most
-// recent ENLIL_FRAME_COUNT of them as a looping sequence rather than a
-// single static image. Downloading all 169 on every ~15-minute snapshot
-// would be wasteful bandwidth for a loop that only needs to cover roughly
-// the last day.
-const ENLIL_FRAME_COUNT = 18
+// NOAA's enlil.json is really an animation reel (the full history it
+// returns, ~169 frames spanning several days at roughly hourly cadence) —
+// EnlilPanel plays the whole thing as a looping sequence rather than a
+// single static image. Downloaded with bounded concurrency so mirroring
+// ~169 images doesn't make the snapshot step run 169 round-trips serially.
+const ENLIL_FETCH_CONCURRENCY = 12
+
+async function mapWithConcurrency(items, limit, fn) {
+  const results = new Array(items.length)
+  let next = 0
+  async function worker() {
+    while (next < items.length) {
+      const i = next++
+      results[i] = await fn(items[i], i)
+    }
+  }
+  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, worker))
+  return results
+}
 
 async function refreshEnlilImage(frames) {
-  const recent = frames.slice(-ENLIL_FRAME_COUNT)
-  if (recent.length === 0) return frames
+  if (frames.length === 0) return frames
 
-  const mirrored = []
-  for (const [i, frame] of recent.entries()) {
-    if (!frame.url) continue
+  const mirrored = await mapWithConcurrency(frames, ENLIL_FETCH_CONCURRENCY, async (frame, i) => {
+    if (!frame.url) return null
     const ext = extname(frame.url) || '.jpg'
     const localImageName = `enlil-frame-${i}${ext}`
     const imageResponse = await fetch(`${NOAA_BASE_URL}${frame.url}`)
@@ -57,9 +67,9 @@ async function refreshEnlilImage(frames) {
     // this app's types were modeled on) — stash the original NOAA filename
     // as `time` instead, both satisfying parseEnlilAnimation's expected
     // shape and giving each frame a real per-snapshot cache-busting value.
-    mirrored.push({ time: frame.url, url: `/data/${localImageName}` })
-  }
-  return mirrored
+    return { time: frame.url, url: `/data/${localImageName}` }
+  })
+  return mirrored.filter((frame) => frame !== null)
 }
 
 async function main() {
